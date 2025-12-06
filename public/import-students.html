@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Import Students - ZIEL</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #d4af37 0%, #f4e5a5 50%, #90ee90 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 800px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 15px 30px;
+            background: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #27ae60;
+        }
+        .btn-secondary {
+            background: #3498db;
+        }
+        .btn-secondary:hover {
+            background: #2980b9;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .success {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .info {
+            color: #3498db;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .progress {
+            margin-top: 10px;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Import Students to Firestore</h1>
+        <p>Paste student names below (one per line). The system will automatically add them to Firestore if they don't already exist.</p>
+        
+        <textarea id="studentList" placeholder="Paste student names here...
+One name per line
+Example:
+Sanway
+Aditya Shaw
+Abhirup Mondal"></textarea>
+        
+        <button onclick="importStudents()">✅ Import Students</button>
+        <button class="btn-secondary" onclick="checkExisting()">🔍 Check Existing Students</button>
+        
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs,
+            query,
+            where,
+            Timestamp 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyALyA_Yod2TKWonP_oSFehR6-tKq9xDC3I",
+            authDomain: "ziel-d0064.firebaseapp.com",
+            projectId: "ziel-d0064",
+            storageBucket: "ziel-d0064.firebasestorage.app",
+            messagingSenderId: "249203765928",
+            appId: "1:249203765928:web:391650d800d197d902c89d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.importStudents = async function() {
+            const textarea = document.getElementById('studentList');
+            const statusDiv = document.getElementById('status');
+            
+            const names = textarea.value
+                .split('\n')
+                .map(name => name.trim())
+                .filter(name => name.length > 0);
+
+            if (names.length === 0) {
+                alert('Please enter at least one student name');
+                return;
+            }
+
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '<p class="info">⏳ Starting import process...</p>';
+
+            let added = 0;
+            let skipped = 0;
+            let errors = 0;
+            const progressDiv = document.createElement('div');
+            progressDiv.className = 'progress';
+            statusDiv.appendChild(progressDiv);
+
+            try {
+                for (let i = 0; i < names.length; i++) {
+                    const name = names[i];
+                    progressDiv.textContent = `Processing ${i + 1}/${names.length}: ${name}`;
+
+                    try {
+                        // Check if student already exists
+                        const q = query(collection(db, "students"), where("name", "==", name));
+                        const snapshot = await getDocs(q);
+
+                        if (snapshot.empty) {
+                            // Add new student
+                            await addDoc(collection(db, "students"), {
+                                name: name,
+                                status: "active",
+                                createdAt: Timestamp.now()
+                            });
+                            added++;
+                        } else {
+                            skipped++;
+                        }
+                    } catch (error) {
+                        console.error(`Error with ${name}:`, error);
+                        errors++;
+                    }
+
+                    // Small delay to avoid overwhelming Firestore
+                    if (i % 10 === 0 && i > 0) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                }
+
+                statusDiv.innerHTML = `
+                    <p class="success">✅ Import Complete!</p>
+                    <p>✅ <strong>${added}</strong> students added</p>
+                    <p>⏭️ <strong>${skipped}</strong> students already existed (skipped)</p>
+                    ${errors > 0 ? `<p class="error">❌ <strong>${errors}</strong> errors</p>` : ''}
+                    <p class="info">Total processed: ${names.length}</p>
+                    <p><a href="admin.html">Go to Admin Panel</a></p>
+                `;
+
+            } catch (error) {
+                console.error('Import error:', error);
+                statusDiv.innerHTML = `
+                    <p class="error">❌ Error: ${error.message}</p>
+                    <p>Check browser console for details</p>
+                `;
+            }
+        };
+
+        window.checkExisting = async function() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '<p class="info">⏳ Checking existing students...</p>';
+
+            try {
+                const snapshot = await getDocs(collection(db, "students"));
+                
+                const activeStudents = [];
+                const inactiveStudents = [];
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.status === "active") {
+                        activeStudents.push(data.name);
+                    } else {
+                        inactiveStudents.push(data.name);
+                    }
+                });
+
+                activeStudents.sort();
+                inactiveStudents.sort();
+
+                statusDiv.innerHTML = `
+                    <p class="success">✅ Database Check Complete</p>
+                    <p><strong>Total Students:</strong> ${snapshot.size}</p>
+                    <p><strong>Active:</strong> ${activeStudents.length}</p>
+                    <p><strong>Inactive:</strong> ${inactiveStudents.length}</p>
+                    <div style="margin-top: 15px; max-height: 300px; overflow-y: auto; background: white; padding: 15px; border-radius: 5px;">
+                        <strong>Active Students:</strong><br>
+                        ${activeStudents.map((name, i) => `${i + 1}. ${name}`).join('<br>')}
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Check error:', error);
+                statusDiv.innerHTML = `
+                    <p class="error">❌ Error: ${error.message}</p>
+                `;
+            }
+        };
+
+        // Pre-fill with the provided list
+        document.addEventListener('DOMContentLoaded', function() {
+            const studentNames = `Sanway
+Aditya Shaw
+Abhirup Mondal
+Mayukh Paul
+Rajeshwari Roy
+Bipaasha Paul
+Krittika ghoshal
+Sounak Mishra
+Shivangi Pathak
+Shivaji Pathak
+Srijani
+Ainesh Palit
+Arkaprabha Basu
+Rinita Das
+Basundhara Das
+Nandika Chaudhuri
+Sristi Sah
+Disha Das
+Arushi
+Ashwina Biswas
+Samyukta Adhya
+Srijit Adhya
+Ranvir Singh
+Unmesha Bhadra
+Anushank Majhi
+Shirsha Bose
+Aariz Hussien
+Krittika
+Raja Paul
+Siddharth Das
+Asmita Biswas
+Anik Saxena
+Ayaan Verma
+Aarush Mukherjee
+Srijit Chhel
+Utsav Sah
+Harsh Sah
+Srinjan Dutta
+Atharv Singh
+Ujain
+Kanish Paul
+Aditri Banerjee
+Archisa
+Shidhant Das
+Wrickbidhan
+Aryavansh Aggarwal
+Debangshi Mukherjee
+Debashruta Dev
+Mayurakkhi Maity
+Bedangk Choudhury
+Dibyayan Mondal
+Spandita
+Shouryajeet
+Anish Roy
+Sreehit Manna
+Siddhant Sethia
+Akshara Banerjee
+Aditya Pradhan
+Shaurya Chatterjee
+Rudra Chhetri
+Bilash Bera
+Hrijoy
+Rikhiya Paul
+Mihir Kumar
+Shishir Kumar
+Pratham Adhikari
+Sriya Dutta
+Manvi Singh
+Aditya Pandey
+Sanvi Das
+Rajveer Singh
+Viveshika
+Aryan
+Kaustav Mondal
+Shourish Manna
+Biswajeet Poul
+Aarohi
+Shivanya Gupta
+Lakshi Naveen
+Myra Bhandari
+Zaydan Soz
+Asmara Soz
+Adhiraj Singh
+Veer Chopra
+Myraa Khanna
+Paritosh Chacko
+Om Singh
+Aryan Sood
+Ishaq
+Vivaan Kabir Thakur
+Sanya Romley
+Sanjana Singh
+Amartya Pavuluri
+Anantya Pavuluri
+Riya
+Aiyana
+Pranit
+Rishabh
+Simran Sikand
+Sai Kumar
+Ananya Chitumala
+Jiana
+Krishna Samant
+Dhruv Chakraborty
+Prithviraj Mehta
+Aarav Gautam
+Sonika Barua
+Suprit
+Aaryav Sinha
+Parzaan Zaveri
+Adrika Das
+Ayaati Chaturvedi
+Sambudhha Ghatak
+Samadrita Sengupta
+Madhuparna Dutta
+Ayesha Vermani
+Zayaan
+Shruti Chatterjee
+Amal Adil
+Sanvi Narula
+Sathvik
+Ishika Mehta
+Karthik Padiga
+Kanav Narula
+Hridhya Yadav
+Richita Sharma
+Shriyansh
+Siddharth Ghosh
+Raina B
+Anishka
+Nivrrithi Arvind
+Aarna
+Jyotiradtiya
+Nishka Lahoti
+Aarna Lahoti
+Harman Bajwa
+Jasmeen Bajwa
+Pritha
+Sharanya Sood
+Sharanya Sengupta
+Meghna
+Sitara
+Panya
+Kapeesh
+Aanya Rekhi
+Harshita Tibrewal
+Hruday Neerukonda
+Angela Tripathi
+Seth Tripathi
+Zoya Shah
+Viren Bhattra Bhaika
+Akhil Reddy
+Prathik Reddy
+Priyanka Kumari
+Arika Aggarwal
+Theia Ghista
+Sana Srivastava
+Erina Sarah Preetham
+Layla Sophia Preetham
+Aarush
+Tara Pai
+Naina Pai
+Shiv Trivedi
+Aryan B
+Adhrit Gautam
+Dithya
+Zoya Chhabra
+Om Chhabra
+Fateh Singh Bachher
+Myra Dhanda
+Kuhu Arora
+Prithvi Sanyal
+Dayita
+Siritha Reddy
+Dia Pandya
+Mustafa Ghori
+Ashmi
+Moonis
+Chahak Showkatramani
+Vidya Sagar
+Noel Dhar
+Sana Verma
+Preksha
+Vignesh
+Aanya Srivastava
+Samar Chopra
+Rishit
+Sreeja Mitra
+Kabiir Kathuria
+Komaira C
+Jas
+Anvi
+Aashita
+Aanshika
+Hridaan Hiremath
+Rayhaan Mahajan
+Adwika Biswas
+Arya Chatterjee
+Anay
+Samaira Gupta
+Aishi
+Audrayan
+Ifra Khan
+Shrish Chandra
+Abhay Mahajan
+Veer Rana
+Vanshika Rana
+Krishna Sriram
+Sana George
+Kian George
+Vyom
+Indrakshi
+Dvij
+Aaditya Tiwari
+Shreya Mukherjee
+Nav
+Tia Singh
+Aavir Mahajan
+Anaya Mahajan
+Shreeya Suresh
+Aashira
+Ilina Roy
+Aishleen Abrol
+Kabir
+Kiaan
+Arjun Sarraf
+Rini Ghosh
+Anvika Kabra
+Tanishka Desai
+Vivaan Daruka
+Ahmed
+Aastha Dua
+Simone Vasvani
+Arjan Singh
+Smyaan Gupta
+Myra Mahajan
+Manish
+Nihitha Chakravarthy
+Mysha Kothari
+Archish
+Vatsa Vishal
+Nihaal Rao
+Vihaan Nautiyal
+Varnika
+Rajika Biswas
+Saina Goenka
+Anvi Goenka
+Snigdha Parepalli
+Pearl
+Ayera
+Sivan Reddy
+Advik Kothari
+Izaan
+Mahee
+Delisha
+Garv Agrawala
+Divij Kapoor
+Yogam Vinayak
+Shanaya
+Armaan Mahajan
+Aira Sethi
+Dhwani Modi
+Ehan Sen
+Ashwal
+Yash Singh
+Kulsum Yasir
+Shaurya Jhunjhunwala
+Aadya Gupta
+Aaditya Raval
+Advait Mana
+Ivanya
+Dhriti Agarwal
+Viraaj Agrawal
+Abhranil Pahari
+Chloe Rouch
+Rafael Rouch
+Suprateek Banerjee
+Aanya Agarwal
+Dhruv Gupta
+Gayatri Bhalla`;
+
+            document.getElementById('studentList').value = studentNames;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Temporary open access for development
+    // TODO: Implement Firebase Authentication and restore secure rules
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

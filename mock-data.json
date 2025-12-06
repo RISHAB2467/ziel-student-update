@@ -1,0 +1,143 @@
+{
+  "students": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "courses": ["Math 101", "Physics 201", "Chemistry 101"]
+    },
+    {
+      "id": 2,
+      "name": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "courses": ["Biology 101", "Math 101"]
+    },
+    {
+      "id": 3,
+      "name": "Mike Johnson",
+      "email": "mike.johnson@example.com",
+      "courses": ["Physics 201", "Math 201"]
+    }
+  ],
+  "teachers": [
+    {
+      "id": 1,
+      "name": "Prof. Anderson",
+      "email": "anderson@example.com",
+      "classes": ["Math 101", "Math 201"]
+    },
+    {
+      "id": 2,
+      "name": "Dr. Williams",
+      "email": "williams@example.com",
+      "classes": ["Physics 201", "Physics 301"]
+    },
+    {
+      "id": 3,
+      "name": "Dr. Brown",
+      "email": "brown@example.com",
+      "classes": ["Chemistry 101", "Biology 101"]
+    }
+  ],
+  "courses": [
+    {
+      "id": 1,
+      "name": "Math 101",
+      "teacher": "Prof. Anderson",
+      "students": 25,
+      "description": "Introduction to Algebra and Calculus"
+    },
+    {
+      "id": 2,
+      "name": "Physics 201",
+      "teacher": "Dr. Williams",
+      "students": 18,
+      "description": "Classical Mechanics and Thermodynamics"
+    },
+    {
+      "id": 3,
+      "name": "Chemistry 101",
+      "teacher": "Dr. Brown",
+      "students": 22,
+      "description": "General Chemistry and Lab"
+    },
+    {
+      "id": 4,
+      "name": "Biology 101",
+      "teacher": "Dr. Brown",
+      "students": 20,
+      "description": "Introduction to Life Sciences"
+    }
+  ],
+  "assignments": [
+    {
+      "id": 1,
+      "course": "Math 101",
+      "title": "Algebra Quiz",
+      "description": "Complete problems 1-20 from chapter 3",
+      "dueDate": "2025-12-10",
+      "status": "pending"
+    },
+    {
+      "id": 2,
+      "course": "Physics 201",
+      "title": "Newton's Laws Lab",
+      "description": "Lab report on Newton's three laws of motion",
+      "dueDate": "2025-12-15",
+      "status": "completed"
+    },
+    {
+      "id": 3,
+      "course": "Chemistry 101",
+      "title": "Periodic Table Test",
+      "description": "Memorize elements 1-30",
+      "dueDate": "2025-12-12",
+      "status": "pending"
+    },
+    {
+      "id": 4,
+      "course": "Biology 101",
+      "title": "Cell Structure Essay",
+      "description": "Write a 500-word essay on cell organelles",
+      "dueDate": "2025-12-18",
+      "status": "pending"
+    }
+  ],
+  "grades": [
+    {
+      "studentId": 1,
+      "student": "John Doe",
+      "course": "Math 101",
+      "grade": "A",
+      "score": 92
+    },
+    {
+      "studentId": 1,
+      "student": "John Doe",
+      "course": "Physics 201",
+      "grade": "B+",
+      "score": 87
+    },
+    {
+      "studentId": 2,
+      "student": "Jane Smith",
+      "course": "Biology 101",
+      "grade": "A-",
+      "score": 90
+    },
+    {
+      "studentId": 2,
+      "student": "Jane Smith",
+      "course": "Math 101",
+      "grade": "A",
+      "score": 95
+    },
+    {
+      "studentId": 3,
+      "student": "Mike Johnson",
+      "course": "Physics 201",
+      "grade": "B",
+      "score": 85
+    }
+  ]
+}

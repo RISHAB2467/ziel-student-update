@@ -1,0 +1,19 @@
+{
+  "name": "ziel",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "ZIEL Education Platform - Teacher and Admin Portal",
+  "main": "public/app-firestore.js",
+  "scripts": {
+    "dev": "firebase emulators:start --only hosting",
+    "dev:firestore": "firebase emulators:start",
+    "deploy": "firebase deploy",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["education", "firebase", "firestore"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "firebase": "^12.6.0"
+  }
+}

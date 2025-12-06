@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Migrate to Status Field - ZIEL</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 700px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 15px 30px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .success {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .info {
+            color: #666;
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Migrate Database to Status Field</h1>
+        <p>This tool converts old <code>active: true/false</code> boolean fields to new <code>status: "active"/"inactive"</code> string fields.</p>
+        
+        <div class="info">
+            <strong>What this does:</strong><br>
+            • Finds all teachers with <code>active</code> boolean field<br>
+            • Converts to <code>status: "active"</code> or <code>status: "inactive"</code><br>
+            • Does the same for all students<br>
+            • Safe to run multiple times (skips already converted documents)
+        </div>
+        
+        <button onclick="migrateData()">🚀 Migrate Data</button>
+        <button onclick="checkMigrationStatus()">🔍 Check Status</button>
+        
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getFirestore, 
+            collection, 
+            getDocs,
+            doc,
+            updateDoc
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyALyA_Yod2TKWonP_oSFehR6-tKq9xDC3I",
+            authDomain: "ziel-d0064.firebaseapp.com",
+            projectId: "ziel-d0064",
+            storageBucket: "ziel-d0064.firebasestorage.app",
+            messagingSenderId: "249203765928",
+            appId: "1:249203765928:web:391650d800d197d902c89d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.migrateData = async function() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '<p class="info">⏳ Starting migration...</p>';
+
+            try {
+                let teachersMigrated = 0;
+                let studentsMigrated = 0;
+                let teachersSkipped = 0;
+                let studentsSkipped = 0;
+
+                // Migrate teachers
+                const teachersSnapshot = await getDocs(collection(db, "teachers"));
+                for (const docSnapshot of teachersSnapshot.docs) {
+                    const data = docSnapshot.data();
+                    
+                    // Check if already has status field
+                    if (data.status !== undefined) {
+                        teachersSkipped++;
+                        continue;
+                    }
+
+                    // Convert active boolean to status string
+                    const newStatus = data.active === true ? "active" : "inactive";
+                    
+                    await updateDoc(doc(db, "teachers", docSnapshot.id), {
+                        status: newStatus
+                    });
+                    teachersMigrated++;
+                }
+
+                // Migrate students
+                const studentsSnapshot = await getDocs(collection(db, "students"));
+                for (const docSnapshot of studentsSnapshot.docs) {
+                    const data = docSnapshot.data();
+                    
+                    // Check if already has status field
+                    if (data.status !== undefined) {
+                        studentsSkipped++;
+                        continue;
+                    }
+
+                    // Convert active boolean to status string
+                    const newStatus = data.active === true ? "active" : "inactive";
+                    
+                    await updateDoc(doc(db, "students", docSnapshot.id), {
+                        status: newStatus
+                    });
+                    studentsMigrated++;
+                }
+
+                statusDiv.innerHTML = `
+                    <p class="success">✅ Migration Complete!</p>
+                    <p><strong>Teachers:</strong> ${teachersMigrated} migrated, ${teachersSkipped} already had status field</p>
+                    <p><strong>Students:</strong> ${studentsMigrated} migrated, ${studentsSkipped} already had status field</p>
+                    <p style="margin-top: 15px; color: #3498db;">
+                        <strong>Next Step:</strong> You can now safely delete the old <code>active</code> field from documents if desired.
+                    </p>
+                    <p><a href="admin.html">Go to Admin Panel</a></p>
+                `;
+
+            } catch (error) {
+                console.error('Migration error:', error);
+                statusDiv.innerHTML = `
+                    <p class="error">❌ Error: ${error.message}</p>
+                    <p>Check browser console for details</p>
+                `;
+            }
+        };
+
+        window.checkMigrationStatus = async function() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '<p class="info">⏳ Checking migration status...</p>';
+
+            try {
+                const teachersSnapshot = await getDocs(collection(db, "teachers"));
+                const studentsSnapshot = await getDocs(collection(db, "students"));
+
+                let teachersWithStatus = 0;
+                let teachersWithActive = 0;
+                let studentsWithStatus = 0;
+                let studentsWithActive = 0;
+
+                teachersSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.status !== undefined) teachersWithStatus++;
+                    if (data.active !== undefined) teachersWithActive++;
+                });
+
+                studentsSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.status !== undefined) studentsWithStatus++;
+                    if (data.active !== undefined) studentsWithActive++;
+                });
+
+                const teachersNeedMigration = teachersWithActive - teachersWithStatus;
+                const studentsNeedMigration = studentsWithActive - studentsWithStatus;
+                const allMigrated = teachersNeedMigration === 0 && studentsNeedMigration === 0;
+
+                statusDiv.innerHTML = `
+                    <p class="success">✅ Migration Status Check</p>
+                    <p><strong>Teachers:</strong> ${teachersSnapshot.size} total</p>
+                    <ul style="text-align: left; margin: 5px 0 15px 30px;">
+                        <li>${teachersWithStatus} have <code>status</code> field</li>
+                        <li>${teachersWithActive} have <code>active</code> field</li>
+                        <li>${teachersNeedMigration} need migration</li>
+                    </ul>
+                    <p><strong>Students:</strong> ${studentsSnapshot.size} total</p>
+                    <ul style="text-align: left; margin: 5px 0 15px 30px;">
+                        <li>${studentsWithStatus} have <code>status</code> field</li>
+                        <li>${studentsWithActive} have <code>active</code> field</li>
+                        <li>${studentsNeedMigration} need migration</li>
+                    </ul>
+                    ${allMigrated ? 
+                        '<p class="success">✅ All documents migrated! No action needed.</p>' : 
+                        '<p class="info">⚠️ Some documents need migration. Click "Migrate Data" button.</p>'
+                    }
+                `;
+
+            } catch (error) {
+                console.error('Check error:', error);
+                statusDiv.innerHTML = `
+                    <p class="error">❌ Error: ${error.message}</p>
+                `;
+            }
+        };
+    </script>
+</body>
+</html>

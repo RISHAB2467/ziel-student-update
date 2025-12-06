@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reports & Analytics - ZIEL</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 28px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .filters-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .filters-card h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #34495e;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-generate {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+        }
+
+        .btn-export {
+            background: #9b59b6;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .btn-export:hover {
+            background: #8e44ad;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card.gradient-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .stat-card.gradient-2 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .stat-card.gradient-3 {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .stat-card.gradient-4 {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .report-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .report-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .report-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .report-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .report-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #7f8c8d;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .chart-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .header, .filters-card, .action-buttons, .nav-buttons {
+                display: none;
+            }
+            .report-section {
+                box-shadow: none;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h1>📊 Reports & Analytics</h1>
+        <div class="nav-buttons">
+            <a href="admin.html" class="btn btn-primary">🏠 Admin Panel</a>
+            <a href="index.html" class="btn btn-danger" onclick="logout()">Logout</a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-card">
+        <h2>🔍 Report Configuration</h2>
+        
+        <div class="filter-grid">
+            <div class="filter-group">
+                <label>Report Type</label>
+                <select id="reportType" onchange="updateReportOptions()">
+                    <option value="student">Student Report</option>
+                    <option value="teacher">Teacher Report</option>
+                    <option value="payment">Payment Status</option>
+                    <option value="sheet">Sheet Made Status</option>
+                    <option value="summary">Overall Summary</option>
+                </select>
+            </div>
+
+            <div class="filter-group" id="studentFilterGroup">
+                <label>Select Student</label>
+                <select id="studentFilter">
+                    <option value="">All Students</option>
+                </select>
+            </div>
+
+            <div class="filter-group" id="teacherFilterGroup" style="display: none;">
+                <label>Select Teacher</label>
+                <select id="teacherFilter">
+                    <option value="">All Teachers</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>From Date</label>
+                <input type="date" id="dateFrom">
+            </div>
+
+            <div class="filter-group">
+                <label>To Date</label>
+                <input type="date" id="dateTo">
+            </div>
+
+            <div class="filter-group">
+                <label>Quick Select</label>
+                <select id="quickDateSelect" onchange="applyQuickDate()">
+                    <option value="">Custom Range</option>
+                    <option value="today">Today</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="week">This Week</option>
+                    <option value="lastWeek">Last Week</option>
+                    <option value="month">This Month</option>
+                    <option value="lastMonth">Last Month</option>
+                    <option value="year">This Year</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn-generate" onclick="generateReport()">
+                📈 Generate Report
+            </button>
+            <button class="btn-export" onclick="exportToPDF()" style="background: #e74c3c;">
+                📄 Export PDF
+            </button>
+            <button class="btn-export" onclick="exportToCSV()">
+                📊 Export CSV
+            </button>
+            <button class="btn-export" onclick="printReport()" style="background: #34495e;">
+                🖨️ Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div id="statsContainer" style="display: none;">
+        <div class="stats-grid">
+            <div class="stat-card gradient-1">
+                <div class="stat-value" id="statTotal">0</div>
+                <div class="stat-label">Total Classes</div>
+            </div>
+            <div class="stat-card gradient-2">
+                <div class="stat-value" id="statDuration">0</div>
+                <div class="stat-label">Total Hours</div>
+            </div>
+            <div class="stat-card gradient-3">
+                <div class="stat-value" id="statSheets">0</div>
+                <div class="stat-label">Sheets Made</div>
+            </div>
+            <div class="stat-card gradient-4">
+                <div class="stat-value" id="statPayment">₹0</div>
+                <div class="stat-label">Total Payment</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Content -->
+    <div id="reportContent"></div>
+</div>
+
+<script type="module" src="app-firestore.js"></script>
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { 
+        getFirestore, 
+        collection, 
+        getDocs,
+        query,
+        where,
+        Timestamp 
+    } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyALyA_Yod2TKWonP_oSFehR6-tKq9xDC3I",
+        authDomain: "ziel-d0064.firebaseapp.com",
+        projectId: "ziel-d0064",
+        storageBucket: "ziel-d0064.firebasestorage.app",
+        messagingSenderId: "249203765928",
+        appId: "1:249203765928:web:391650d800d197d902c89d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Check admin access
+    if (localStorage.getItem("adminLoggedIn") !== "true") {
+        alert("Admin access required!");
+        window.location.href = "index.html";
+    }
+
+    let allEntries = [];
+    let students = [];
+    let teachers = [];
+
+    // Initialize
+    async function init() {
+        await loadData();
+        setDefaultDates();
+    }
+
+    // Load all data
+    async function loadData() {
+        try {
+            // Load entries
+            const entriesSnapshot = await getDocs(collection(db, "entries"));
+            allEntries = entriesSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            // Load students
+            const studentsSnapshot = await getDocs(collection(db, "students"));
+            students = studentsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })).sort((a, b) => a.name.localeCompare(b.name));
+
+            // Load teachers
+            const teachersSnapshot = await getDocs(collection(db, "teachers"));
+            teachers = teachersSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })).sort((a, b) => a.name.localeCompare(b.name));
+
+            // Populate dropdowns
+            populateDropdowns();
+        } catch (error) {
+            console.error("Error loading data:", error);
+            alert("Error loading data. Check console.");
+        }
+    }
+
+    // Populate filter dropdowns
+    function populateDropdowns() {
+        const studentSelect = document.getElementById("studentFilter");
+        const teacherSelect = document.getElementById("teacherFilter");
+
+        studentSelect.innerHTML = '<option value="">All Students</option>';
+        students.forEach(s => {
+            studentSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+
+        teacherSelect.innerHTML = '<option value="">All Teachers</option>';
+        teachers.forEach(t => {
+            teacherSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+        });
+    }
+
+    // Set default dates (last month)
+    function setDefaultDates() {
+        const today = new Date();
+        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+
+        document.getElementById("dateFrom").value = lastMonth.toISOString().split('T')[0];
+        document.getElementById("dateTo").value = lastMonthEnd.toISOString().split('T')[0];
+    }
+
+    // Update report options based on type
+    window.updateReportOptions = function() {
+        const reportType = document.getElementById("reportType").value;
+        const studentGroup = document.getElementById("studentFilterGroup");
+        const teacherGroup = document.getElementById("teacherFilterGroup");
+
+        if (reportType === "student") {
+            studentGroup.style.display = "flex";
+            teacherGroup.style.display = "none";
+        } else if (reportType === "teacher") {
+            studentGroup.style.display = "none";
+            teacherGroup.style.display = "flex";
+        } else {
+            studentGroup.style.display = "flex";
+            teacherGroup.style.display = "flex";
+        }
+    };
+
+    // Apply quick date selection
+    window.applyQuickDate = function() {
+        const selection = document.getElementById("quickDateSelect").value;
+        const today = new Date();
+        let fromDate, toDate;
+
+        switch(selection) {
+            case "today":
+                fromDate = toDate = today;
+                break;
+            case "yesterday":
+                fromDate = toDate = new Date(today.setDate(today.getDate() - 1));
+                break;
+            case "week":
+                fromDate = new Date(today.setDate(today.getDate() - today.getDay()));
+                toDate = new Date();
+                break;
+            case "lastWeek":
+                const lastWeekEnd = new Date(today.setDate(today.getDate() - today.getDay() - 1));
+                fromDate = new Date(lastWeekEnd);
+                fromDate.setDate(lastWeekEnd.getDate() - 6);
+                toDate = lastWeekEnd;
+                break;
+            case "month":
+                fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                toDate = new Date();
+                break;
+            case "lastMonth":
+                fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                toDate = new Date(today.getFullYear(), today.getMonth(), 0);
+                break;
+            case "year":
+                fromDate = new Date(today.getFullYear(), 0, 1);
+                toDate = new Date();
+                break;
+            default:
+                return;
+        }
+
+        document.getElementById("dateFrom").value = fromDate.toISOString().split('T')[0];
+        document.getElementById("dateTo").value = toDate.toISOString().split('T')[0];
+    };
+
+    // Generate report
+    window.generateReport = async function() {
+        const reportType = document.getElementById("reportType").value;
+        const dateFrom = document.getElementById("dateFrom").value;
+        const dateTo = document.getElementById("dateTo").value;
+
+        // Filter entries by date
+        const filteredEntries = allEntries.filter(entry => {
+            if (dateFrom && entry.date < dateFrom) return false;
+            if (dateTo && entry.date > dateTo) return false;
+            return true;
+        });
+
+        if (filteredEntries.length === 0) {
+            document.getElementById("reportContent").innerHTML = `
+                <div class="report-section">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <h3>No Data Found</h3>
+                        <p>No entries found for the selected criteria.</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById("statsContainer").style.display = "none";
+            return;
+        }
+
+        // Generate appropriate report
+        switch(reportType) {
+            case "student":
+                generateStudentReport(filteredEntries);
+                break;
+            case "teacher":
+                generateTeacherReport(filteredEntries);
+                break;
+            case "payment":
+                generatePaymentReport(filteredEntries);
+                break;
+            case "sheet":
+                generateSheetReport(filteredEntries);
+                break;
+            case "summary":
+                generateSummaryReport(filteredEntries);
+                break;
+        }
+
+        // Update stats
+        updateStatistics(filteredEntries);
+        document.getElementById("statsContainer").style.display = "block";
+    };
+
+    // Generate student report
+    function generateStudentReport(entries) {
+        const studentId = document.getElementById("studentFilter").value;
+        const filtered = studentId ? entries.filter(e => e.studentId === studentId) : entries;
+
+        // Group by student
+        const studentData = {};
+        filtered.forEach(entry => {
+            const sid = entry.studentId || entry.studentName;
+            if (!studentData[sid]) {
+                studentData[sid] = {
+                    name: entry.studentName || entry.student,
+                    classes: 0,
+                    topics: new Set(),
+                    teachers: new Set(),
+                    duration: 0,
+                    sheetsMade: 0,
+                    entries: []
+                };
+            }
+
+            studentData[sid].classes += entry.classCount || 0;
+            if (entry.topic) studentData[sid].topics.add(entry.topic);
+            if (entry.teacherName) studentData[sid].teachers.add(entry.teacherName);
+            if (entry.timeFrom && entry.timeTo) {
+                studentData[sid].duration += calculateDuration(entry.timeFrom, entry.timeTo);
+            }
+            if (entry.sheetMade === 'yes') studentData[sid].sheetsMade++;
+            studentData[sid].entries.push(entry);
+        });
+
+        // Render report
+        let html = '<div class="report-section">';
+        html += '<h3>📚 Student Performance Report</h3>';
+        
+        Object.keys(studentData).forEach(sid => {
+            const data = studentData[sid];
+            html += `
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="color: #2c3e50; margin-bottom: 15px;">Student: ${data.name}</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div><strong>Total Classes:</strong> ${data.classes}</div>
+                        <div><strong>Duration:</strong> ${data.duration.toFixed(1)} hours</div>
+                        <div><strong>Sheets Made:</strong> ${data.sheetsMade} / ${data.entries.length}</div>
+                        <div><strong>Completion Rate:</strong> ${((data.sheetsMade / data.entries.length) * 100).toFixed(0)}%</div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <strong>Teachers:</strong> ${Array.from(data.teachers).join(', ')}
+                    </div>
+                    <div>
+                        <strong>Topics Covered:</strong>
+                        <ul style="margin-top: 5px; padding-left: 20px;">
+                            ${Array.from(data.topics).map(t => `<li>${t}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        document.getElementById("reportContent").innerHTML = html;
+    }
+
+    // Generate teacher report
+    function generateTeacherReport(entries) {
+        const teacherId = document.getElementById("teacherFilter").value;
+        const filtered = teacherId ? entries.filter(e => e.teacherId === teacherId) : entries;
+
+        // Group by teacher
+        const teacherData = {};
+        filtered.forEach(entry => {
+            const tid = entry.teacherId || entry.teacherName;
+            if (!teacherData[tid]) {
+                teacherData[tid] = {
+                    name: entry.teacherName,
+                    email: entry.teacherEmail,
+                    classes: 0,
+                    students: new Set(),
+                    topics: new Set(),
+                    duration: 0,
+                    payment: 0,
+                    entries: []
+                };
+            }
+
+            teacherData[tid].classes += entry.classCount || 0;
+            if (entry.studentName || entry.student) {
+                teacherData[tid].students.add(entry.studentName || entry.student);
+            }
+            if (entry.topic) teacherData[tid].topics.add(entry.topic);
+            if (entry.timeFrom && entry.timeTo) {
+                teacherData[tid].duration += calculateDuration(entry.timeFrom, entry.timeTo);
+            }
+            if (entry.payment) {
+                const paymentNum = parseFloat(entry.payment.replace(/[^0-9.]/g, ''));
+                if (!isNaN(paymentNum)) teacherData[tid].payment += paymentNum;
+            }
+            teacherData[tid].entries.push(entry);
+        });
+
+        // Render report
+        let html = '<div class="report-section">';
+        html += '<h3>👨‍🏫 Teacher Performance Report</h3>';
+        
+        Object.keys(teacherData).forEach(tid => {
+            const data = teacherData[tid];
+            html += `
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="color: #2c3e50; margin-bottom: 15px;">Teacher: ${data.name}</h4>
+                    ${data.email ? `<p style="color: #7f8c8d; margin-bottom: 10px;">${data.email}</p>` : ''}
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div><strong>Total Classes:</strong> ${data.classes}</div>
+                        <div><strong>Duration:</strong> ${data.duration.toFixed(1)} hours</div>
+                        <div><strong>Students:</strong> ${data.students.size}</div>
+                        <div><strong>Total Payment:</strong> ₹${data.payment.toFixed(0)}</div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <strong>Students Taught:</strong> ${Array.from(data.students).join(', ')}
+                    </div>
+                    <div>
+                        <strong>Topics Covered:</strong>
+                        <ul style="margin-top: 5px; padding-left: 20px;">
+                            ${Array.from(data.topics).map(t => `<li>${t}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        document.getElementById("reportContent").innerHTML = html;
+    }
+
+    // Generate payment report
+    function generatePaymentReport(entries) {
+        let html = '<div class="report-section">';
+        html += '<h3>💰 Payment Status Report</h3>';
+        html += '<table class="report-table">';
+        html += `
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Teacher</th>
+                    <th>Student</th>
+                    <th>Classes</th>
+                    <th>Payment</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+        `;
+
+        entries.forEach(entry => {
+            const hasPayment = entry.payment && entry.payment.trim() !== '';
+            const statusBadge = hasPayment ? 
+                '<span class="badge badge-success">Paid</span>' : 
+                '<span class="badge badge-danger">Pending</span>';
+
+            html += `
+                <tr>
+                    <td>${entry.date}<br><small>${entry.dayOfWeek}</small></td>
+                    <td>${entry.teacherName}</td>
+                    <td>${entry.studentName || entry.student}</td>
+                    <td>${entry.classCount}</td>
+                    <td>${entry.payment || '-'}</td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table></div>';
+        document.getElementById("reportContent").innerHTML = html;
+    }
+
+    // Generate sheet report
+    function generateSheetReport(entries) {
+        let html = '<div class="report-section">';
+        html += '<h3>📄 Sheet Made Status Report</h3>';
+        html += '<table class="report-table">';
+        html += `
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Teacher</th>
+                    <th>Student</th>
+                    <th>Topic</th>
+                    <th>Sheet Made</th>
+                </tr>
+            </thead>
+            <tbody>
+        `;
+
+        entries.forEach(entry => {
+            const sheetBadge = entry.sheetMade === 'yes' ? 
+                '<span class="badge badge-success">✓ Yes</span>' : 
+                '<span class="badge badge-danger">✗ No</span>';
+
+            html += `
+                <tr>
+                    <td>${entry.date}<br><small>${entry.dayOfWeek}</small></td>
+                    <td>${entry.teacherName}</td>
+                    <td>${entry.studentName || entry.student}</td>
+                    <td>${entry.topic || '-'}</td>
+                    <td>${sheetBadge}</td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table></div>';
+        document.getElementById("reportContent").innerHTML = html;
+    }
+
+    // Generate summary report
+    function generateSummaryReport(entries) {
+        const summary = {
+            totalClasses: 0,
+            totalDuration: 0,
+            totalPayment: 0,
+            sheetsMade: 0,
+            uniqueStudents: new Set(),
+            uniqueTeachers: new Set(),
+            topicsCount: new Set()
+        };
+
+        entries.forEach(entry => {
+            summary.totalClasses += entry.classCount || 0;
+            if (entry.timeFrom && entry.timeTo) {
+                summary.totalDuration += calculateDuration(entry.timeFrom, entry.timeTo);
+            }
+            if (entry.payment) {
+                const paymentNum = parseFloat(entry.payment.replace(/[^0-9.]/g, ''));
+                if (!isNaN(paymentNum)) summary.totalPayment += paymentNum;
+            }
+            if (entry.sheetMade === 'yes') summary.sheetsMade++;
+            if (entry.studentName || entry.student) summary.uniqueStudents.add(entry.studentName || entry.student);
+            if (entry.teacherName) summary.uniqueTeachers.add(entry.teacherName);
+            if (entry.topic) summary.topicsCount.add(entry.topic);
+        });
+
+        let html = '<div class="report-section">';
+        html += '<h3>📊 Overall Summary Report</h3>';
+        html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">';
+        
+        html += `
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
+                <div style="font-size: 36px; font-weight: bold;">${entries.length}</div>
+                <div>Total Entries</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 10px;">
+                <div style="font-size: 36px; font-weight: bold;">${summary.totalClasses}</div>
+                <div>Total Classes</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 10px;">
+                <div style="font-size: 36px; font-weight: bold;">${summary.totalDuration.toFixed(1)}</div>
+                <div>Total Hours</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 20px; border-radius: 10px;">
+                <div style="font-size: 36px; font-weight: bold;">₹${summary.totalPayment.toFixed(0)}</div>
+                <div>Total Payment</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 20px; border-radius: 10px;">
+                <div style="font-size: 36px; font-weight: bold;">${summary.uniqueStudents.size}</div>
+                <div>Unique Students</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); color: white; padding: 20px; border-radius: 10px;">
+                <div style="font-size: 36px; font-weight: bold;">${summary.uniqueTeachers.size}</div>
+                <div>Teachers</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #2c3e50; padding: 20px; border-radius: 10px;">
+                <div style="font-size: 36px; font-weight: bold;">${summary.sheetsMade}</div>
+                <div>Sheets Made</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); color: #2c3e50; padding: 20px; border-radius: 10px;">
+                <div style="font-size: 36px; font-weight: bold;">${summary.topicsCount.size}</div>
+                <div>Unique Topics</div>
+            </div>
+        `;
+        
+        html += '</div></div>';
+        document.getElementById("reportContent").innerHTML = html;
+    }
+
+    // Update statistics
+    function updateStatistics(entries) {
+        const stats = {
+            total: 0,
+            duration: 0,
+            sheets: 0,
+            payment: 0
+        };
+
+        entries.forEach(entry => {
+            stats.total += entry.classCount || 0;
+            if (entry.timeFrom && entry.timeTo) {
+                stats.duration += calculateDuration(entry.timeFrom, entry.timeTo);
+            }
+            if (entry.sheetMade === 'yes') stats.sheets++;
+            if (entry.payment) {
+                const paymentNum = parseFloat(entry.payment.replace(/[^0-9.]/g, ''));
+                if (!isNaN(paymentNum)) stats.payment += paymentNum;
+            }
+        });
+
+        document.getElementById("statTotal").textContent = stats.total;
+        document.getElementById("statDuration").textContent = stats.duration.toFixed(1);
+        document.getElementById("statSheets").textContent = stats.sheets;
+        document.getElementById("statPayment").textContent = '₹' + stats.payment.toFixed(0);
+    }
+
+    // Calculate duration in hours
+    function calculateDuration(timeFrom, timeTo) {
+        const [fromH, fromM] = timeFrom.split(':').map(Number);
+        const [toH, toM] = timeTo.split(':').map(Number);
+        const fromMinutes = fromH * 60 + fromM;
+        const toMinutes = toH * 60 + toM;
+        return (toMinutes - fromMinutes) / 60;
+    }
+
+    // Export to CSV
+    window.exportToCSV = function() {
+        const reportContent = document.getElementById("reportContent").innerText;
+        if (!reportContent || reportContent.includes("No Data Found")) {
+            alert("Please generate a report first!");
+            return;
+        }
+
+        const dateFrom = document.getElementById("dateFrom").value;
+        const dateTo = document.getElementById("dateTo").value;
+        
+        let csv = "Date,Teacher,Student,Classes,Time From,Time To,Duration,Sheet Made,Payment,Topic\\n";
+        
+        const filtered = getFilteredEntries();
+        filtered.forEach(entry => {
+            const duration = entry.timeFrom && entry.timeTo ? 
+                calculateDuration(entry.timeFrom, entry.timeTo).toFixed(2) : '0';
+            
+            csv += `"${entry.date}","${entry.teacherName}","${entry.studentName || entry.student}",${entry.classCount},"${entry.timeFrom}","${entry.timeTo}",${duration},"${entry.sheetMade}","${entry.payment || ''}","${entry.topic || ''}"\\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `report_${dateFrom}_to_${dateTo}.csv`;
+        a.click();
+    };
+
+    // Export to PDF (simple version using print)
+    window.exportToPDF = function() {
+        const reportContent = document.getElementById("reportContent").innerHTML;
+        if (!reportContent || reportContent.includes("No Data Found")) {
+            alert("Please generate a report first!");
+            return;
+        }
+
+        alert("PDF export will open print dialog. Save as PDF from there.");
+        window.print();
+    };
+
+    // Print report
+    window.printReport = function() {
+        window.print();
+    };
+
+    // Get filtered entries
+    function getFilteredEntries() {
+        const dateFrom = document.getElementById("dateFrom").value;
+        const dateTo = document.getElementById("dateTo").value;
+        
+        return allEntries.filter(entry => {
+            if (dateFrom && entry.date < dateFrom) return false;
+            if (dateTo && entry.date > dateTo) return false;
+            return true;
+        });
+    }
+
+    // Logout
+    window.logout = function() {
+        localStorage.removeItem("adminLoggedIn");
+        window.location.href = "index.html";
+    };
+
+    // Initialize on page load
+    init();
+</script>
+
+</body>
+</html>

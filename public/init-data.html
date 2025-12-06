@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Initialize Firestore Data</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #d4af37 0%, #f4e5a5 50%, #90ee90 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        button {
+            padding: 15px 30px;
+            background: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background: #27ae60;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .success {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 ZIEL Data Initialization</h1>
+        <p>Click the button below to add sample teachers and students to Firestore</p>
+        
+        <button onclick="initializeData()">Initialize Sample Data</button>
+        <button onclick="checkData()">Check Existing Data</button>
+        
+        <div id="status" class="status"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs,
+            query,
+            where,
+            Timestamp 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyALyA_Yod2TKWonP_oSFehR6-tKq9xDC3I",
+            authDomain: "ziel-d0064.firebaseapp.com",
+            projectId: "ziel-d0064",
+            storageBucket: "ziel-d0064.firebasestorage.app",
+            messagingSenderId: "249203765928",
+            appId: "1:249203765928:web:391650d800d197d902c89d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.initializeData = async function() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<p>Initializing data...</p>';
+
+            try {
+                // Sample teachers
+                const teachers = [
+                    { name: "Prof. Anderson", email: "anderson@ziel.edu" },
+                    { name: "Dr. Williams", email: "williams@ziel.edu" },
+                    { name: "Dr. Brown", email: "brown@ziel.edu" },
+                    { name: "Ms. Johnson", email: "johnson@ziel.edu" },
+                    { name: "Mr. Davis", email: "davis@ziel.edu" }
+                ];
+
+                // Sample students
+                const students = [
+                    "John Doe",
+                    "Jane Smith",
+                    "Mike Johnson",
+                    "Emily Davis",
+                    "Sarah Wilson",
+                    "David Brown",
+                    "Lisa Anderson",
+                    "Tom Martinez",
+                    "Anna Taylor",
+                    "Chris Lee"
+                ];
+
+                let teachersAdded = 0;
+                let studentsAdded = 0;
+
+                // Add teachers
+                for (const teacher of teachers) {
+                    // Check if already exists
+                    const q = query(collection(db, "teachers"), where("name", "==", teacher.name));
+                    const snapshot = await getDocs(q);
+                    
+                    if (snapshot.empty) {
+                        await addDoc(collection(db, "teachers"), {
+                            name: teacher.name,
+                            email: teacher.email,
+                            status: "active",
+                            createdAt: Timestamp.now()
+                        });
+                        teachersAdded++;
+                    }
+                }
+
+                // Add students
+                for (const name of students) {
+                    // Check if already exists
+                    const q = query(collection(db, "students"), where("name", "==", name));
+                    const snapshot = await getDocs(q);
+                    
+                    if (snapshot.empty) {
+                        await addDoc(collection(db, "students"), {
+                            name: name,
+                            status: "active",
+                            createdAt: Timestamp.now()
+                        });
+                        studentsAdded++;
+                    }
+                }
+
+                statusDiv.innerHTML = `
+                    <p class="success">✅ Data Initialized Successfully!</p>
+                    <p>Teachers added: ${teachersAdded}</p>
+                    <p>Students added: ${studentsAdded}</p>
+                    <p><a href="index.html">Go to Login Page</a></p>
+                `;
+            } catch (error) {
+                console.error("Error:", error);
+                statusDiv.innerHTML = `
+                    <p class="error">❌ Error: ${error.message}</p>
+                    <p>Check browser console for details</p>
+                `;
+            }
+        };
+
+        window.checkData = async function() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<p>Checking data...</p>';
+
+            try {
+                const teachersSnapshot = await getDocs(collection(db, "teachers"));
+                const studentsSnapshot = await getDocs(collection(db, "students"));
+                const entriesSnapshot = await getDocs(collection(db, "entries"));
+
+                const teachersList = teachersSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return `${data.name} - ${data.email || 'No email'} (${data.status === 'active' ? 'Active' : 'Inactive'})`;
+                }).join('<br>');
+
+                const studentsList = studentsSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return `${data.name} (${data.status === 'active' ? 'Active' : 'Inactive'})`;
+                }).join('<br>');
+
+                statusDiv.innerHTML = `
+                    <p class="success">✅ Database Status</p>
+                    <h3>Teachers (${teachersSnapshot.size})</h3>
+                    <p style="text-align: left; margin: 10px 0;">${teachersList || 'None'}</p>
+                    <h3>Students (${studentsSnapshot.size})</h3>
+                    <p style="text-align: left; margin: 10px 0;">${studentsList || 'None'}</p>
+                    <h3>Entries: ${entriesSnapshot.size}</h3>
+                `;
+            } catch (error) {
+                console.error("Error:", error);
+                statusDiv.innerHTML = `
+                    <p class="error">❌ Error: ${error.message}</p>
+                    <p>Check browser console for details</p>
+                `;
+            }
+        };
+    </script>
+</body>
+</html>

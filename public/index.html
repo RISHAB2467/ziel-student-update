@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ZIEL - Student Attendance Database</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #90EE90 0%, #2c3e50 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 0;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        .logo {
+            width: 90px;
+            height: 90px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 5px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 2px solid #90EE90;
+            overflow: hidden;
+        }
+
+        .logo img {
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            font-size: 48px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #90EE90, #2c3e50);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .company-name {
+            font-size: 10px;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 300;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.98);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-width: 380px;
+            width: 100%;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-top: 10px;
+            margin-bottom: 0;
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .login-title {
+            font-size: 18px;
+            color: white;
+            font-weight: 700;
+            margin-bottom: 0;
+            line-height: 1.2;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            color: #7f8c8d;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
+        .login-box {
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        label {
+            display: block;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .login-box input[type="password"],
+        .login-box input[type="email"],
+        .login-box select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.3s;
+            background: #f8f9fa;
+            color: #2c3e50;
+        }
+
+        .login-box input:focus,
+        .login-box select:focus {
+            outline: none;
+            border-color: #90EE90;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(144, 238, 144, 0.1);
+        }
+
+        .login-box input::placeholder {
+            color: #95a5a6;
+        }
+
+        .login-box button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: linear-gradient(135deg, #90EE90 0%, #7FD67F 100%);
+            color: #2c3e50;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(144, 238, 144, 0.4);
+        }
+
+        .login-box button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(144, 238, 144, 0.5);
+        }
+
+        .login-box button:active {
+            transform: translateY(0);
+        }
+
+        #teacherSection {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 25px 0;
+            position: relative;
+        }
+
+        .divider::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        .divider-text {
+            background: white;
+            padding: 0 15px;
+            position: relative;
+            color: #95a5a6;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: white;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 25px;
+            }
+
+            .logo {
+                width: 100px;
+                height: 100px;
+            }
+
+            .logo-text {
+                font-size: 40px;
+            }
+
+            .login-title {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="logo-container">
+    <div class="logo">
+        <img src="ziel.png" alt="ZIEL Logo">
+    </div>
+    <div class="company-name">Education Management</div>
+    <div class="login-header">
+        <h1 class="login-title">ZIEL Student Attendance Database Login<br>Secure Access Portal</h1>
+    </div>
+</div>
+
+<div class="login-container">
+    <div class="login-box">
+        <div class="form-group">
+            <label for="roleSelector">Select Your Role</label>
+            <select id="roleSelector" onchange="handleRoleChange()">
+                <option value="">-- Select Role --</option>
+                <option value="teacher">Teacher</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        
+        <div id="teacherSection" style="display: none;">
+            <div class="form-group">
+                <label for="teacherEmailLogin">Enter Your Registered Email</label>
+                <input type="email" id="teacherEmailLogin" placeholder="Enter your email">
+            </div>
+        </div>
+        
+        <div id="adminSection" style="display: none;">
+            <div class="form-group">
+                <label for="adminPassword">Enter Admin Password</label>
+                <input type="password" id="adminPassword" placeholder="Enter password">
+            </div>
+        </div>
+        
+        <button id="loginBtn" onclick="login()" style="display: none;">Login</button>
+    </div>
+</div>
+
+<!-- App Logic with Firestore -->
+<script type="module" src="app-firestore.js"></script>
+</body>
+</html>
