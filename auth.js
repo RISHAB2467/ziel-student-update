@@ -22,8 +22,9 @@ function checkAuth(requiredRole) {
 
 // Logout function
 function logout() {
-    localStorage.removeItem('role');
-    window.location.href = 'login.html';
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.replace('login.html');
 }
 
 // Add logout button to header if user is logged in
@@ -35,7 +36,21 @@ function addLogoutButton() {
             const logoutBtn = document.createElement('button');
             logoutBtn.textContent = 'Logout';
             logoutBtn.className = 'logout-btn';
-            logoutBtn.onclick = logout;
+            
+            // Use addEventListener for better mobile compatibility
+            logoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                logout();
+            });
+            
+            // Add touch event support for mobile
+            logoutBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                logout();
+            });
+            
             header.appendChild(logoutBtn);
         }
     }

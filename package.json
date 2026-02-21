@@ -10,10 +10,15 @@
     "deploy": "firebase deploy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["education", "firebase", "firestore"],
+  "keywords": [
+    "education",
+    "firebase",
+    "firestore"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "firebase": "^12.6.0"
+    "firebase": "^12.6.0",
+    "puppeteer": "^24.33.0"
   }
 }

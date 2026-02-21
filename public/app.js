@@ -183,11 +183,7 @@ function editEntry(index) {
 
     if (!entry) return;
 
-    // Check if within 24 hours
-    if (Date.now() - entry.createdAt > 24*60*60*1000) {
-        alert("Cannot edit entries older than 24 hours!");
-        return;
-    }
+    // Time restriction removed - teachers can edit anytime
 
     // Populate form
     document.getElementById("teacherName").value = entry.teacher;
@@ -212,11 +208,7 @@ function deleteEntry(index) {
     let entries = JSON.parse(localStorage.getItem("entries") || "[]");
     const entry = entries[index];
 
-    // Check if within 24 hours
-    if (Date.now() - entry.createdAt > 24*60*60*1000) {
-        alert("Cannot delete entries older than 24 hours!");
-        return;
-    }
+    // Time restriction removed - teachers can delete anytime
 
     entries.splice(index, 1);
     localStorage.setItem("entries", JSON.stringify(entries));
@@ -329,8 +321,6 @@ function toggleTeacherStatus(index) {
     const teacher = teachers[index];
     const action = teacher.active ? "deactivate" : "activate";
     
-    if (!confirm(`Are you sure you want to ${action} ${teacher.name}?`)) return;
-    
     teachers[index].active = !teachers[index].active;
     localStorage.setItem("teachersData", JSON.stringify(teachers));
     allTeachers = teachers;
@@ -341,8 +331,6 @@ function toggleStudentStatus(index) {
     let students = JSON.parse(localStorage.getItem("studentsData") || "[]");
     const student = students[index];
     const action = student.active ? "deactivate" : "activate";
-    
-    if (!confirm(`Are you sure you want to ${action} ${student.name}?`)) return;
     
     students[index].active = !students[index].active;
     localStorage.setItem("studentsData", JSON.stringify(students));
@@ -490,6 +478,11 @@ function showTab(tabName) {
     
     // Add active class to clicked button
     event.target.classList.add('active');
+    
+    // Load payment students when payment tab is opened
+    if (tabName === 'payments' && typeof window.loadPaymentStudents === 'function') {
+        window.loadPaymentStudents();
+    }
 }
 
 function loadStudentReport() {

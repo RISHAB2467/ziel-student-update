@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "ziel-d0064"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

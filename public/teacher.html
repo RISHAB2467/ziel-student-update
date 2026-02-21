@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Teacher Panel - Daily Activity Log</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -49,6 +50,13 @@
             color: #666666;
             font-size: 14px;
             font-weight: 400;
+            margin-top: 8px;
+        }
+
+        .teacher-email {
+            color: #d4af37;
+            font-weight: 500;
+            font-size: 13px;
         }
 
         .logout-btn {
@@ -70,6 +78,63 @@
             box-shadow: 0 2px 6px rgba(212, 175, 55, 0.3);
         }
 
+        /* Tab Navigation Styles */
+        .tab-navigation {
+            display: flex;
+            gap: 0;
+            margin-bottom: 24px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(44, 44, 44, 0.15);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 16px 24px;
+            background: rgba(255, 255, 255, 0.5);
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .tab-button:hover {
+            background: rgba(212, 175, 55, 0.1);
+            color: #2c2c2c;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: #2c2c2c;
+            border-bottom-color: #d4af37;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .date-range-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
         .autocomplete-container {
             position: relative;
         }
@@ -80,14 +145,15 @@
             left: 0;
             right: 0;
             background: white;
-            border: 1px solid #dadce0;
-            border-top: none;
-            border-radius: 0 0 4px 4px;
-            max-height: 200px;
+            border: 2px solid #d4af37;
+            border-top: 1px solid #ddd;
+            border-radius: 0 0 8px 8px;
+            max-height: 250px;
             overflow-y: auto;
-            z-index: 1000;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 9999;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
             display: none;
+            margin-top: 2px;
         }
 
         .autocomplete-dropdown.show {
@@ -95,10 +161,11 @@
         }
 
         .autocomplete-item {
-            padding: 10px 16px;
+            padding: 12px 16px;
             cursor: pointer;
             transition: background 0.2s;
             border-bottom: 1px solid #f0f0f0;
+            font-size: 15px;
         }
 
         .autocomplete-item:last-child {
@@ -106,16 +173,19 @@
         }
 
         .autocomplete-item:hover {
-            background: #f8f9fa;
+            background: #fff8e1;
         }
 
         .autocomplete-item.selected {
-            background: #e8f5e9;
+            background: #fff3cd;
         }
 
         .autocomplete-highlight {
-            font-weight: 600;
+            font-weight: 700;
             color: #d4af37;
+            background: #fffbea;
+            padding: 2px 4px;
+            border-radius: 3px;
         }
 
         .form-card {
@@ -398,6 +468,41 @@
             box-shadow: 0 2px 6px rgba(144, 238, 144, 0.3);
         }
 
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .search-filter-section input:focus {
+            outline: none;
+            border-color: #d4af37;
+            box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15);
+        }
+
+        @media (max-width: 768px) {
+            .search-filter-section > div:first-child {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .date-range-inputs {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .search-filter-section .download-btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .search-filter-section > div:last-child > div:last-child {
+                flex-direction: column;
+            }
+
+            .tab-button {
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+        }
+
         @media (max-width: 768px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -409,6 +514,46 @@
 
             .container {
                 padding: 16px;
+            }
+        }
+
+        /* Tablet (768px - 1024px) */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .container {
+                max-width: 960px;
+                padding: 18px;
+            }
+
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .entry-details {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Small Mobile (max-width: 480px) */
+        @media (max-width: 480px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header h2 {
+                font-size: 1.5em;
+            }
+
+            input, select, textarea {
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+
+            button {
+                padding: 14px;
+                font-size: 1em;
+            }
+
+            .logout-btn {
+                padding: 14px 20px;
             }
         }
     </style>
@@ -427,50 +572,99 @@
         </div>
     </div>
 
-    <!-- Entry Form -->
-    <div class="form-card">
-        <h3>Log New Class Entry</h3>
-        <form id="entryForm">
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+        <button class="tab-button active" onclick="switchTab('logEntry')">Log Entry</button>
+        <button class="tab-button" onclick="switchTab('viewSearch')">View / Search / Download</button>
+        <button class="tab-button" onclick="switchTab('doubtSessions')">Doubt/Demo Sessions</button>
+    </div>
+
+    <!-- TAB 1: Log Entry (Data Filling) -->
+    <div id="logEntryTab" class="tab-content active">
+        <div class="form-card">
+            <h3>Log New Class Entry</h3>
+            <form id="entryForm">
             <div class="form-grid">
                 <!-- Date & Day -->
                 <div class="form-group">
-                    <label>Date<span class="required">*</span></label>
-                    <input type="date" id="date" required>
+                    <label>Date</label>
+                    <input type="date" id="date">
                     <div class="help-text" id="dayDisplay"></div>
                 </div>
 
                 <!-- Student Selection -->
-                <div class="form-group">
-                    <label>Student Name<span class="required">*</span></label>
-                    <input id="studentSearch" placeholder="Search student..." style="margin-bottom: 8px;">
-                    <select id="studentName" required></select>
+                <div class="form-group" style="position: relative;">
+                    <label>Student Name <span style="color: #ef5350;">*</span></label>
+                    <input type="text" id="studentSearch" placeholder="Type student name..." autocomplete="off" required>
+                    <div id="studentDropdown" class="autocomplete-dropdown"></div>
+                    <input type="hidden" id="studentName" required>
                 </div>
 
                 <!-- Time From -->
                 <div class="form-group">
-                    <label>Time From<span class="required">*</span></label>
-                    <input type="time" id="timeFrom" required>
+                    <label>Time From</label>
+                    <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 8px; background: #f0f0f0; padding: 8px; border-radius: 12px; align-items: center;">
+                            <!-- Hour picker with up/down -->
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeFromHourInput" value="9" min="1" max="12" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeFrom','hour', this.value)">
+                            </div>
+                            
+                            <span style="font-size: 24px; font-weight: bold; color: #666;">:</span>
+                            
+                            <!-- Minute picker with up/down -->
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeFromMinuteInput" value="0" min="0" max="59" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeFrom','minute', this.value)">
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 2px; margin-left: 4px;">
+                                <button type="button" onclick="setTimeFromPeriod('AM')" id="timeFromAM" style="padding: 6px 12px; background: #007AFF; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">AM</button>
+                                <button type="button" onclick="setTimeFromPeriod('PM')" id="timeFromPM" style="padding: 6px 12px; background: #E5E5EA; color: #8E8E93; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">PM</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="timeFrom">
                 </div>
 
                 <!-- Time To -->
                 <div class="form-group">
-                    <label>Time To<span class="required">*</span></label>
-                    <input type="time" id="timeTo" required>
+                    <label>Time To</label>
+                    <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 8px; background: #f0f0f0; padding: 8px; border-radius: 12px; align-items: center;">
+                            <!-- Hour picker with up/down -->
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeToHourInput" value="10" min="1" max="12" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeTo','hour', this.value)">
+                            </div>
+                            
+                            <span style="font-size: 24px; font-weight: bold; color: #666;">:</span>
+                            
+                            <!-- Minute picker with up/down -->
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeToMinuteInput" value="0" min="0" max="59" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeTo','minute', this.value)">
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 2px; margin-left: 4px;">
+                                <button type="button" onclick="setTimeToPeriod('AM')" id="timeToAM" style="padding: 6px 12px; background: #007AFF; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">AM</button>
+                                <button type="button" onclick="setTimeToPeriod('PM')" id="timeToPM" style="padding: 6px 12px; background: #E5E5EA; color: #8E8E93; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">PM</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="timeTo">
                 </div>
 
                 <!-- Number of Classes -->
                 <div class="form-group">
-                    <label>Number of Classes<span class="required">*</span></label>
-                    <input type="number" id="classCount" min="1" max="10" required>
-                    <div class="help-text">How many classes in this session?</div>
+                    <label>Number of Classes</label>
+                    <input type="number" id="classCount" min="0.5" max="10" step="0.5">
+                    <div class="help-text">How many classes in this session? (can be decimal, e.g., 1.5)</div>
                 </div>
 
-                <!-- Sheet Made -->
+                <!-- C/W Document shared -->
                 <div class="form-group">
-                    <label>Sheet Made?<span class="required">*</span></label>
+                    <label>C/W Document shared</label>
                     <div class="radio-group">
                         <div class="radio-option">
-                            <input type="radio" id="sheetYes" name="sheetMade" value="yes" required>
+                            <input type="radio" id="sheetYes" name="sheetMade" value="yes">
                             <label for="sheetYes">Yes</label>
                         </div>
                         <div class="radio-option">
@@ -480,36 +674,253 @@
                     </div>
                 </div>
 
-                <!-- Topic -->
-                <div class="form-group full-width">
-                    <label>Topic Taught<span class="required">*</span></label>
-                    <textarea id="topic" placeholder="Enter topics covered in this session..." required></textarea>
+                <!-- Homework Given -->
+                <div class="form-group">
+                    <label>Homework Given?</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="homeworkYes" name="homeworkGiven" value="yes">
+                            <label for="homeworkYes">Yes</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="homeworkNo" name="homeworkGiven" value="no">
+                            <label for="homeworkNo">No</label>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Payment (Optional) -->
+                <!-- Subject -->
+                <div class="form-group" style="position: relative;">
+                    <label>Subject</label>
+                    <input type="text" id="subject" placeholder="Start typing to search subjects..." autocomplete="off">
+                    <div id="subjectDropdown" class="autocomplete-dropdown"></div>
+                </div>
+
+                <!-- Topic -->
                 <div class="form-group full-width">
-                    <label>Payment (Optional)</label>
-                    <input type="text" id="payment" placeholder="Enter payment amount or leave blank">
-                    <div class="help-text">Leave blank if no payment received</div>
+                    <label>Topic Taught</label>
+                    <textarea id="topic" placeholder="Enter topics covered in this session..."></textarea>
+                </div>
+                
+                <!-- Payment (Part-Time Teachers Only) -->
+                <div class="form-group" id="paymentField" style="display: none;">
+                    <label>Payment Amount</label>
+                    <input type="number" id="payment" placeholder="Enter payment amount (₹)" min="0" step="1">
                 </div>
             </div>
 
             <button type="submit" class="submit-btn">Save Entry</button>
         </form>
+        </div>
     </div>
 
-    <!-- Recent Entries -->
-    <div class="entries-card">
-        <h3>Recent Entries (Last 24 Hours)</h3>
-        <div id="recentEntries">
-            <div class="empty-state">Loading entries...</div>
+    <!-- TAB 2: View / Search / Download Entries -->
+    <div id="viewSearchTab" class="tab-content">
+        <div class="entries-card">
+            <h3>Your Submitted Entries</h3>
+            
+            <!-- Search and Filter Section -->
+            <div class="search-filter-section" style="background: rgba(255, 255, 255, 0.7); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
+                <div style="margin-bottom: 16px;">
+                    <!-- Student Name Search -->
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="font-weight: 500; margin-bottom: 8px; display: block;">Search by Student Name</label>
+                        <div style="position: relative;">
+                            <input type="text" id="searchStudentName" placeholder="Type student name..." autocomplete="off" style="width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px;">
+                            <div id="studentNameSuggestions" class="autocomplete-dropdown"></div>
+                        </div>
+                    </div>
+
+                    <!-- Date Range Filter -->
+                    <div class="form-group">
+                        <label style="font-weight: 500; margin-bottom: 8px; display: block;">Filter by Date Range</label>
+                        <div class="date-range-inputs">
+                            <div>
+                                <label style="font-size: 12px; color: #666; margin-bottom: 4px; display: block;">From Date</label>
+                                <input type="date" id="searchDateFrom" style="width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: #666; margin-bottom: 4px; display: block;">To Date</label>
+                                <input type="date" id="searchDateTo" style="width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Download Options -->
+                <div style="border-top: 1px solid #e0e0e0; padding-top: 16px;">
+                    <label style="font-weight: 500; margin-bottom: 12px; display: block;">Download Options</label>
+                    
+                    <!-- Field Selection -->
+                    <div style="margin-bottom: 12px; background: #f8f9fa; padding: 12px; border-radius: 6px;">
+                        <label style="font-weight: 500; margin-bottom: 8px; display: block; font-size: 13px;">Select Fields to Include:</label>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" class="download-field" value="studentName" checked style="cursor: pointer;">
+                                <span style="font-size: 13px;">Student Name</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" class="download-field" value="date" checked style="cursor: pointer;">
+                                <span style="font-size: 13px;">Date</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" class="download-field" value="time" checked style="cursor: pointer;">
+                                <span style="font-size: 13px;">Time</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" class="download-field" value="subject" checked style="cursor: pointer;">
+                                <span style="font-size: 13px;">Subject/Topic</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" class="download-field" value="classCount" checked style="cursor: pointer;">
+                                <span style="font-size: 13px;">Class Count</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" class="download-field" value="sheetMade" checked style="cursor: pointer;">
+                                <span style="font-size: 13px;">Sheet Made</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" class="download-field" value="homeworkGiven" checked style="cursor: pointer;">
+                                <span style="font-size: 13px;">Homework</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" class="download-field" value="remarks" checked style="cursor: pointer;">
+                                <span style="font-size: 13px;">Remarks</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Download Buttons -->
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button onclick="downloadPDF()" class="download-btn" style="padding: 10px 20px; background: #e53935; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; transition: all 0.2s;">
+                            Download as PDF
+                        </button>
+                        <button onclick="downloadExcel()" class="download-btn" style="padding: 10px 20px; background: #43a047; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; transition: all 0.2s;">
+                            Download as Excel
+                        </button>
+                        <button onclick="downloadWeeklyData()" class="download-btn" style="padding: 10px 20px; background: #1e88e5; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; transition: all 0.2s;">
+                            Download Weekly Data
+                        </button>
+                        <button onclick="clearFilters()" style="padding: 10px 20px; background: #757575; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; transition: all 0.2s;">
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Count -->
+            <div id="resultsCount" style="margin-bottom: 12px; color: #666; font-size: 14px;"></div>
+
+            <!-- Entries List -->
+            <div id="recentEntries">
+                <div class="empty-state">Loading entries...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: Doubt/Demo Sessions -->
+    <div id="doubtSessionsTab" class="tab-content">
+        <div class="form-card">
+            <h3>Add Doubt/Demo Session</h3>
+            <form id="doubtSessionForm">
+                <div class="form-grid">
+                    <!-- Session Type -->
+                    <div class="form-group">
+                        <label>Session Type</label>
+                        <select id="doubtSessionType" required>
+                            <option value="">Select Type</option>
+                            <option value="doubt">Doubt Clearing Session</option>
+                            <option value="demo">Demo Session</option>
+                        </select>
+                    </div>
+
+                    <!-- Student Name -->
+                    <div class="form-group">
+                        <label>Student Name</label>
+                        <input type="text" id="doubtStudentName" placeholder="Enter student name" required>
+                    </div>
+
+                    <!-- Class -->
+                    <div class="form-group">
+                        <label>Class</label>
+                        <input type="text" id="doubtClass" placeholder="e.g., 10th, 12th" required>
+                    </div>
+
+                    <!-- Subject -->
+                    <div class="form-group">
+                        <label>Subject</label>
+                        <input type="text" id="doubtSubject" placeholder="e.g., Physics, Mathematics" required>
+                    </div>
+
+                    <!-- Date -->
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="doubtDate" required>
+                    </div>
+
+                    <!-- Remarks -->
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Remarks (Optional)</label>
+                        <textarea id="doubtRemarks" rows="3" placeholder="Additional notes..."></textarea>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn">Save Session</button>
+            </form>
+        </div>
+
+        <!-- View Doubt/Demo Sessions -->
+        <div class="entries-card" style="margin-top: 24px;">
+            <h3>My Doubt/Demo Sessions</h3>
+            <div id="doubtSessionsList">
+                <div class="empty-state">Loading sessions...</div>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- App Logic with Firestore -->
-<script type="module" src="app-firestore.js"></script>
+<script type="module" src="app-firestore.js?v=128"></script>
+
+<!-- Libraries for PDF and Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <script>
+    // Tab Switching Function
+    function switchTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Show selected tab
+        if (tabName === 'logEntry') {
+            document.getElementById('logEntryTab').classList.add('active');
+            document.querySelectorAll('.tab-button')[0].classList.add('active');
+        } else if (tabName === 'viewSearch') {
+            document.getElementById('viewSearchTab').classList.add('active');
+            document.querySelectorAll('.tab-button')[1].classList.add('active');
+            // Load entries when switching to this tab
+            if (typeof window.loadRecentEntries === 'function') {
+                window.loadRecentEntries();
+            }
+        } else if (tabName === 'doubtSessions') {
+            document.getElementById('doubtSessionsTab').classList.add('active');
+            document.querySelectorAll('.tab-button')[2].classList.add('active');
+            // Load doubt sessions when switching to this tab
+            if (typeof window.loadDoubtSessions === 'function') {
+                window.loadDoubtSessions();
+            }
+        }
+    }
+
     // Display day of week when date changes
     document.getElementById('date')?.addEventListener('change', function() {
         const dateValue = this.value;
@@ -527,25 +938,217 @@
         document.getElementById('date').value = today;
         document.getElementById('date').dispatchEvent(new Event('change'));
 
-        // Display teacher info
+        // Display teacher info and welcome greeting
         const teacherName = localStorage.getItem('teacherName');
-        const teacherEmail = localStorage.getItem('teacherEmail');
+        const employmentType = localStorage.getItem('teacherEmploymentType');
+        
         if (teacherName) {
-            document.getElementById('teacherInfo').textContent = `Logged in as: ${teacherName} (${teacherEmail || ''})`;
+            document.getElementById('teacherInfo').textContent = `Logged in as: ${teacherName}`;
+        }
+        
+        // Show payment field for part-time teachers
+        if (employmentType === 'parttime') {
+            const paymentField = document.getElementById('paymentField');
+            if (paymentField) {
+                paymentField.style.display = 'block';
+            }
         }
 
-        // Load students for autocomplete
-        loadStudentsForTeacher();
-        
-        // Load recent entries
-        loadRecentEntries();
+        // Note: loadStudentsForTeacher() and loadRecentEntries() 
+        // are called from app-firestore.js module (line 2095-2096)
     });
 
     function logout() {
-        if (confirm('Are you sure you want to logout?')) {
-            localStorage.clear();
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.replace('index.html');
+    }
+</script>
+
+<!-- Session Timeout Management -->
+<script>
+    // Session timeout configuration
+    const SESSION_TIMEOUT = 98 * 60 * 60 * 1000; // 98 hours in milliseconds
+    let sessionTimer;
+    let lastActivityTime;
+
+    function checkSession() {
+        const role = localStorage.getItem('role');
+        if (role !== 'teacher') {
             window.location.href = 'index.html';
+            return;
         }
+
+        const currentTime = Date.now();
+        const timeSinceActivity = currentTime - lastActivityTime;
+
+        if (timeSinceActivity > SESSION_TIMEOUT) {
+            alert('Session expired due to inactivity. Please login again.');
+            logout();
+        }
+    }
+
+    function resetSessionTimer() {
+        lastActivityTime = Date.now();
+        localStorage.setItem('teacherLastActivity', lastActivityTime.toString());
+        
+        if (sessionTimer) {
+            clearTimeout(sessionTimer);
+        }
+        
+        sessionTimer = setTimeout(() => {
+            alert('Session expired due to inactivity. Please login again.');
+            logout();
+        }, SESSION_TIMEOUT);
+    }
+
+    // Initialize session
+    window.addEventListener('load', function() {
+        const role = localStorage.getItem('role');
+        if (role !== 'teacher') {
+            window.location.href = 'index.html';
+            return;
+        }
+
+        const storedActivity = localStorage.getItem('teacherLastActivity');
+        lastActivityTime = storedActivity ? parseInt(storedActivity) : Date.now();
+        
+        checkSession();
+        resetSessionTimer();
+        
+        const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+        activityEvents.forEach(event => {
+            document.addEventListener(event, resetSessionTimer);
+        });
+
+        setInterval(checkSession, 60000);
+    });
+
+    // Time picker variables
+    let timeFromHour = 9;
+    let timeFromMinute = 0;
+    let timeFromPeriod = 'AM';
+    let timeToHour = 10;
+    let timeToMinute = 0;
+    let timeToPeriod = 'AM';
+    let adjustInterval = null;
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', function() {
+        updateTimeDisplay('timeFrom');
+        updateTimeDisplay('timeTo');
+    });
+
+    function startAdjust(field, type, direction) {
+        // Immediate first adjustment
+        adjustTime(field, type, direction);
+        
+        // Start continuous adjustment immediately with no delay
+        adjustInterval = setInterval(() => {
+            adjustTime(field, type, direction);
+        }, 250); // Adjust every 250ms for smoother, slower scrolling while holding
+    }
+
+    function stopAdjust() {
+        if (adjustInterval) {
+            clearInterval(adjustInterval);
+            adjustInterval = null;
+        }
+    }
+
+    function adjustTime(field, type, direction) {
+        if (type === 'hour') {
+            if (field === 'timeFrom') {
+                timeFromHour += direction;
+                if (timeFromHour > 12) timeFromHour = 1;
+                if (timeFromHour < 1) timeFromHour = 12;
+            } else {
+                timeToHour += direction;
+                if (timeToHour > 12) timeToHour = 1;
+                if (timeToHour < 1) timeToHour = 12;
+            }
+        } else {
+            if (field === 'timeFrom') {
+                timeFromMinute += direction;
+                if (timeFromMinute > 59) timeFromMinute = 0;
+                if (timeFromMinute < 0) timeFromMinute = 59;
+            } else {
+                timeToMinute += direction;
+                if (timeToMinute > 59) timeToMinute = 0;
+                if (timeToMinute < 0) timeToMinute = 59;
+            }
+        }
+        
+        updateTimeDisplay(field);
+    }
+
+    function setTimeFromPeriod(period) {
+        timeFromPeriod = period;
+        document.getElementById('timeFromAM').style.background = period === 'AM' ? '#007AFF' : '#E5E5EA';
+        document.getElementById('timeFromAM').style.color = period === 'AM' ? 'white' : '#8E8E93';
+        document.getElementById('timeFromPM').style.background = period === 'PM' ? '#007AFF' : '#E5E5EA';
+        document.getElementById('timeFromPM').style.color = period === 'PM' ? 'white' : '#8E8E93';
+        updateTimeDisplay('timeFrom');
+    }
+
+    function setTimeToPeriod(period) {
+        timeToPeriod = period;
+        document.getElementById('timeToAM').style.background = period === 'AM' ? '#007AFF' : '#E5E5EA';
+        document.getElementById('timeToAM').style.color = period === 'AM' ? 'white' : '#8E8E93';
+        document.getElementById('timeToPM').style.background = period === 'PM' ? '#007AFF' : '#E5E5EA';
+        document.getElementById('timeToPM').style.color = period === 'PM' ? 'white' : '#8E8E93';
+        updateTimeDisplay('timeTo');
+    }
+
+    function updateTimeDisplay(field) {
+        let hour, minute, period;
+        if (field === 'timeFrom') {
+            hour = timeFromHour;
+            minute = timeFromMinute;
+            period = timeFromPeriod;
+        } else {
+            hour = timeToHour;
+            minute = timeToMinute;
+            period = timeToPeriod;
+        }
+        
+        // Update input displays
+        document.getElementById(field + 'HourInput').value = hour;
+        document.getElementById(field + 'MinuteInput').value = String(minute).padStart(2, '0');
+        
+        // Update hidden field (24-hour format)
+        let hour24 = hour;
+        if (period === 'PM' && hour !== 12) {
+            hour24 += 12;
+        } else if (period === 'AM' && hour === 12) {
+            hour24 = 0;
+        }
+        
+        const timeString = String(hour24).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+        document.getElementById(field).value = timeString;
+    }
+
+    // Handle manual numeric input for hour/minute fields
+    function onManualTimeInput(field, type, value) {
+        // normalize empty
+        if (value === '' || value === null || typeof value === 'undefined') return;
+        let num = parseInt(value, 10);
+        if (isNaN(num)) return;
+
+        if (type === 'hour') {
+            if (num < 1) num = 1;
+            if (num > 12) num = 12;
+            if (field === 'timeFrom') timeFromHour = num;
+            else timeToHour = num;
+        } else {
+            if (num < 0) num = 0;
+            if (num > 59) num = 59;
+            if (field === 'timeFrom') timeFromMinute = num;
+            else timeToMinute = num;
+        }
+
+        // Update display and hidden value
+        updateTimeDisplay(field);
     }
 </script>
 </body>

@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Old Entries - ZIEL System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 700px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .info-box h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .info-box p {
+            color: #555;
+            line-height: 1.6;
+            margin: 5px 0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-safe {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-safe:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-back {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-back:hover {
+            background: #7f8c8d;
+        }
+
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        #status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+
+        #status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+
+        #status.loading {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            display: block;
+        }
+
+        .progress {
+            margin-top: 15px;
+        }
+
+        .progress-bar {
+            background: #ecf0f1;
+            border-radius: 8px;
+            height: 30px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Delete Old Entries</h1>
+        <p style="color: #7f8c8d; margin-top: 10px;">Administrative tool to remove entries before a specific date</p>
+
+        <div class="warning">
+            <strong>Warning:</strong> This action will permanently delete entries and cannot be undone. Make sure to backup your data first!
+        </div>
+
+        <div class="info-box">
+            <h3>Deletion Options</h3>
+            <p><strong>Option 1:</strong> Delete entries before December 24, 2025 (24/12/2025)</p>
+            <p><strong>Option 2:</strong> Delete ALL entries (complete database wipe)</p>
+            <p><strong>Collections Affected:</strong> entries</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalEntries">-</div>
+                <div class="stat-label">Total Entries</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="oldEntries">-</div>
+                <div class="stat-label">Entries Before 24/12/25</div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-safe" onclick="checkOldEntries()">Check Old Entries</button>
+            <button class="btn-danger" id="deleteBtn" onclick="deleteOldEntries()" disabled>Delete Old Entries</button>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-danger" onclick="deleteAllEntries()" style="background: #c0392b;">DELETE ALL ENTRIES</button>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-back" onclick="window.location.href='admin.html'">Back to Admin Panel</button>
+        </div>
+
+        <div id="status"></div>
+
+        <div class="progress" id="progressContainer" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getFirestore, 
+            collection, 
+            getDocs,
+            deleteDoc,
+            doc,
+            query,
+            where,
+            Timestamp
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyALyA_Yod2TKWonP_oSFehR6-tKq9xDC3I",
+            authDomain: "ziel-d0064.firebaseapp.com",
+            projectId: "ziel-d0064",
+            storageBucket: "ziel-d0064.firebasestorage.app",
+            messagingSenderId: "249203765928",
+            appId: "1:249203765928:web:391650d800d197d902c89d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Target date: December 24, 2025
+        const targetDate = new Date('2025-12-24T00:00:00');
+        const targetTimestamp = Timestamp.fromDate(targetDate);
+
+        window.checkOldEntries = async function() {
+            const statusDiv = document.getElementById('status');
+            const deleteBtn = document.getElementById('deleteBtn');
+            
+            statusDiv.className = 'loading';
+            statusDiv.innerHTML = 'Checking entries...';
+            deleteBtn.disabled = true;
+
+            try {
+                // Get all entries
+                const entriesSnapshot = await getDocs(collection(db, 'entries'));
+                const totalCount = entriesSnapshot.size;
+                
+                // Filter entries before target date
+                let oldEntriesCount = 0;
+                const entriesToDelete = [];
+                
+                entriesSnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const createdAt = data.createdAt;
+                    
+                    // Check if createdAt exists and is before target date
+                    if (createdAt && createdAt.toDate() < targetDate) {
+                        oldEntriesCount++;
+                        entriesToDelete.push({
+                            id: docSnap.id,
+                            data: data,
+                            createdAt: createdAt.toDate()
+                        });
+                    }
+                });
+
+                // Update stats
+                document.getElementById('totalEntries').textContent = totalCount;
+                document.getElementById('oldEntries').textContent = oldEntriesCount;
+
+                if (oldEntriesCount > 0) {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = `
+                        Found <strong>${oldEntriesCount}</strong> entries before December 24, 2025<br>
+                        <small>Click "Delete Old Entries" to remove them permanently</small>
+                    `;
+                    deleteBtn.disabled = false;
+                    
+                    // Store for deletion
+                    window.entriesToDelete = entriesToDelete;
+                } else {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = 'No entries found before December 24, 2025. Database is clean!';
+                    deleteBtn.disabled = true;
+                }
+            } catch (error) {
+                console.error('Error checking entries:', error);
+                statusDiv.className = 'error';
+                statusDiv.innerHTML = `Error: ${error.message}`;
+            }
+        };
+
+        window.deleteOldEntries = async function() {
+            if (!window.entriesToDelete || window.entriesToDelete.length === 0) {
+                alert('Please check old entries first!');
+                return;
+            }
+
+            const confirmation = confirm(
+                `WARNING: Are you sure you want to delete ${window.entriesToDelete.length} entries?\n\n` +
+                `This action cannot be undone!\n\n` +
+                `Click OK to proceed with deletion.`
+            );
+
+            if (!confirmation) {
+                return;
+            }
+
+            const statusDiv = document.getElementById('status');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const deleteBtn = document.getElementById('deleteBtn');
+            
+            statusDiv.className = 'loading';
+            statusDiv.innerHTML = 'Deleting old entries...';
+            progressContainer.style.display = 'block';
+            deleteBtn.disabled = true;
+
+            const totalToDelete = window.entriesToDelete.length;
+            let deletedCount = 0;
+            let failedCount = 0;
+
+            try {
+                // Delete entries one by one
+                for (const entry of window.entriesToDelete) {
+                    try {
+                        await deleteDoc(doc(db, 'entries', entry.id));
+                        deletedCount++;
+                    } catch (err) {
+                        console.error(`Failed to delete entry ${entry.id}:`, err);
+                        failedCount++;
+                    }
+                    
+                    // Update progress
+                    const progress = Math.round((deletedCount + failedCount) / totalToDelete * 100);
+                    progressFill.style.width = progress + '%';
+                    progressFill.textContent = `${progress}% (${deletedCount + failedCount}/${totalToDelete})`;
+                }
+
+                // Show results
+                if (failedCount === 0) {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = `
+                        <strong>Success!</strong><br>
+                        Deleted ${deletedCount} entries before December 24, 2025<br>
+                        <small>Database cleanup completed successfully</small>
+                    `;
+                } else {
+                    statusDiv.className = 'error';
+                    statusDiv.innerHTML = `
+                        <strong>Partial Success</strong><br>
+                        Deleted: ${deletedCount} entries<br>
+                        Failed: ${failedCount} entries<br>
+                        <small>Check console for error details</small>
+                    `;
+                }
+
+                // Update stats
+                document.getElementById('oldEntries').textContent = '0';
+                document.getElementById('totalEntries').textContent = 
+                    parseInt(document.getElementById('totalEntries').textContent) - deletedCount;
+                
+                // Clear stored entries
+                window.entriesToDelete = [];
+                
+            } catch (error) {
+                console.error('Error during deletion:', error);
+                statusDiv.className = 'error';
+                statusDiv.innerHTML = `Error: ${error.message}`;
+            }
+        };
+
+        window.deleteAllEntries = async function() {
+            const statusDiv = document.getElementById('status');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+
+            // First confirmation
+            const confirmation1 = confirm(
+                `CRITICAL WARNING\n\n` +
+                `You are about to DELETE ALL ENTRIES from the database!\n\n` +
+                `This will remove ALL data from the "View All Entries" tab.\n\n` +
+                `This action is PERMANENT and CANNOT be undone!\n\n` +
+                `Click OK to proceed to final confirmation.`
+            );
+
+            if (!confirmation1) {
+                return;
+            }
+
+            // Second confirmation
+            const confirmation2 = confirm(
+                `FINAL CONFIRMATION\n\n` +
+                `Type or remember this: I WANT TO DELETE EVERYTHING\n\n` +
+                `This is your last chance to cancel.\n\n` +
+                `Click OK to PERMANENTLY DELETE ALL ENTRIES.`
+            );
+
+            if (!confirmation2) {
+                return;
+            }
+
+            statusDiv.className = 'loading';
+            statusDiv.innerHTML = 'Deleting ALL entries from database...';
+            progressContainer.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressFill.textContent = '0%';
+
+            try {
+                // Get all entries
+                const entriesSnapshot = await getDocs(collection(db, 'entries'));
+                const totalEntries = entriesSnapshot.size;
+
+                if (totalEntries === 0) {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = 'Database is already empty. No entries to delete.';
+                    progressContainer.style.display = 'none';
+                    return;
+                }
+
+                let deletedCount = 0;
+                let failedCount = 0;
+                const allEntries = [];
+
+                entriesSnapshot.forEach(docSnap => {
+                    allEntries.push(docSnap.id);
+                });
+
+                // Delete all entries
+                for (const entryId of allEntries) {
+                    try {
+                        await deleteDoc(doc(db, 'entries', entryId));
+                        deletedCount++;
+                    } catch (err) {
+                        console.error(`Failed to delete entry ${entryId}:`, err);
+                        failedCount++;
+                    }
+
+                    // Update progress
+                    const progress = Math.round((deletedCount + failedCount) / totalEntries * 100);
+                    progressFill.style.width = progress + '%';
+                    progressFill.textContent = `${progress}% (${deletedCount + failedCount}/${totalEntries})`;
+                }
+
+                // Show results
+                if (failedCount === 0) {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = `
+                        <strong>Complete Database Wipe Successful!</strong><br>
+                        Deleted ${deletedCount} entries<br>
+                        <small>All entries have been permanently removed from "View All Entries" tab</small>
+                    `;
+                } else {
+                    statusDiv.className = 'error';
+                    statusDiv.innerHTML = `
+                        <strong>Partial Success</strong><br>
+                        Deleted: ${deletedCount} entries<br>
+                        Failed: ${failedCount} entries<br>
+                        <small>Check console for error details</small>
+                    `;
+                }
+
+                // Update stats
+                document.getElementById('totalEntries').textContent = totalEntries - deletedCount;
+                document.getElementById('oldEntries').textContent = '0';
+
+            } catch (error) {
+                console.error('Error during deletion:', error);
+                statusDiv.className = 'error';
+                statusDiv.innerHTML = `Error: ${error.message}`;
+            }
+        };
+
+        // Auto-check on page load
+        window.addEventListener('load', checkOldEntries);
+    </script>
+</body>
+</html>

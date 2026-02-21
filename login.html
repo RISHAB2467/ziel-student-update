@@ -15,31 +15,39 @@
             <form id="login-form">
                 <div class="form-group">
                     <label for="role">Role</label>
-                    <select id="role" required>
+                    <select id="role" required onchange="toggleLoginFields()">
                         <option value="">Select Role</option>
                         <option value="teacher">Teacher</option>
                         <option value="admin">Admin</option>
                     </select>
                 </div>
                 
+                <div class="form-group" id="teacher-name-field" style="display: none;">
+                    <label for="teacherName">Teacher Name (case-sensitive)</label>
+                    <input type="text" id="teacherName" placeholder="Enter your name exactly as registered">
+                </div>
+                
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Enter password" required>
+                    <input type="password" id="password" placeholder="Enter your registered password" required>
                 </div>
                 
                 <div id="error-message" class="error-message"></div>
                 
                 <button type="submit" class="login-btn">Login</button>
+                
+                <div id="forgot-password-link" style="display: none; text-align: center; margin-top: 16px;">
+                    <a href="#" onclick="showForgotPasswordMessage(event)" style="color: #1a73e8; text-decoration: none; font-size: 14px;">Forgot Password?</a>
+                </div>
             </form>
             
             <div class="demo-info">
                 <p><strong>Demo Credentials:</strong></p>
-                <p>Teacher: teacher123</p>
                 <p>Admin: admin123</p>
             </div>
         </div>
     </div>
 
-    <script src="login.js"></script>
+    <script type="module" src="login.js"></script>
 </body>
 </html>

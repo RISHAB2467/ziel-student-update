@@ -3,6 +3,8 @@
 <head>
     <title>ZIEL - Student Attendance Database</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- EmailJS for Admin OTP -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -16,10 +18,10 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
+            justify-content: center;
             align-items: center;
-            padding: 20px;
-            gap: 20px;
+            padding: 15px;
+            gap: 15px;
         }
 
         .logo-container {
@@ -29,8 +31,8 @@
         }
 
         .logo {
-            width: 90px;
-            height: 90px;
+            width: 70px;
+            height: 70px;
             background: white;
             border-radius: 50%;
             display: flex;
@@ -49,7 +51,7 @@
         }
 
         .logo-text {
-            font-size: 48px;
+            font-size: 36px;
             font-weight: bold;
             background: linear-gradient(135deg, #90EE90, #2c3e50);
             -webkit-background-clip: text;
@@ -58,16 +60,17 @@
         }
 
         .company-name {
-            font-size: 10px;
+            font-size: 9px;
             color: white;
             text-transform: uppercase;
             letter-spacing: 1px;
             font-weight: 300;
+            margin-bottom: 5px;
         }
 
         .login-container {
             background: rgba(255, 255, 255, 0.98);
-            padding: 20px;
+            padding: 25px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             max-width: 380px;
@@ -76,18 +79,18 @@
 
         .login-header {
             text-align: center;
-            margin-top: 10px;
-            margin-bottom: 0;
+            margin-top: 5px;
+            margin-bottom: 15px;
             width: 100%;
             max-width: 380px;
         }
 
         .login-title {
-            font-size: 18px;
+            font-size: 16px;
             color: white;
             font-weight: 700;
             margin-bottom: 0;
-            line-height: 1.2;
+            line-height: 1.3;
             text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
@@ -233,21 +236,35 @@
         }
 
         @media (max-width: 480px) {
+            body {
+                padding: 10px;
+                gap: 10px;
+            }
+
             .login-container {
-                padding: 30px 25px;
+                padding: 20px;
             }
 
             .logo {
-                width: 100px;
-                height: 100px;
+                width: 60px;
+                height: 60px;
             }
 
             .logo-text {
-                font-size: 40px;
+                font-size: 32px;
             }
 
             .login-title {
-                font-size: 24px;
+                font-size: 14px;
+            }
+
+            .company-name {
+                font-size: 8px;
+            }
+
+            .login-box button {
+                padding: 12px;
+                font-size: 14px;
             }
         }
     </style>
@@ -277,15 +294,38 @@
         
         <div id="teacherSection" style="display: none;">
             <div class="form-group">
-                <label for="teacherEmailLogin">Enter Your Registered Email</label>
-                <input type="email" id="teacherEmailLogin" placeholder="Enter your email">
+                <label for="teacherNameLogin">Teacher Name (case-sensitive)</label>
+                <input type="text" id="teacherNameLogin" placeholder="Enter your name exactly as registered">
+            </div>
+            <div class="form-group">
+                <label for="teacherPasswordLogin">Password</label>
+                <input type="password" id="teacherPasswordLogin" placeholder="Enter your registered password">
+            </div>
+            <div style="text-align: center; margin-top: 12px;">
+                <a href="#" onclick="showForgotPasswordMessage(event)" style="color: #1a73e8; text-decoration: none; font-size: 14px;">Forgot Password?</a>
             </div>
         </div>
         
         <div id="adminSection" style="display: none;">
             <div class="form-group">
+                <label for="adminEmail">Enter Admin Email</label>
+                <input type="email" id="adminEmail" placeholder="Enter your admin email">
+            </div>
+            <div class="form-group">
                 <label for="adminPassword">Enter Admin Password</label>
-                <input type="password" id="adminPassword" placeholder="Enter password">
+                <input type="password" id="adminPassword" placeholder="Enter admin password">
+            </div>
+            <div id="otpSection" style="display: none;">
+                <div class="form-group">
+                    <label for="adminOTP">Enter OTP (sent to your email)</label>
+                    <input type="text" id="adminOTP" placeholder="Enter 6-digit OTP" maxlength="6" pattern="[0-9]{6}">
+                    <div style="margin-top: 8px; font-size: 11px; color: #7f8c8d;">
+                        <span style="display: flex; align-items: center; gap: 5px;">
+                            <span>⏱️</span>
+                            <span>OTP valid for 5 minutes</span>
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -294,6 +334,6 @@
 </div>
 
 <!-- App Logic with Firestore -->
-<script type="module" src="app-firestore.js"></script>
+<script type="module" src="app-firestore.js?v=128"></script>
 </body>
 </html>

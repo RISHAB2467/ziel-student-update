@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reset & Import Students - ZIEL</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 900px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            font-size: 20px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .step-container {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 25px;
+            background: #3498db;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .file-input-label:hover {
+            background: #2980b9;
+        }
+        .file-name {
+            display: inline-block;
+            margin-left: 15px;
+            color: #2ecc71;
+            font-weight: 600;
+        }
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 15px 30px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .btn-primary {
+            background: #3498db;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #2ecc71;
+        }
+        .btn-success:hover {
+            background: #27ae60;
+        }
+        .btn-secondary {
+            background: #95a5a6;
+        }
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        .status.show {
+            display: block;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .status.loading {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .progress {
+            margin-top: 15px;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .preview {
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .preview table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .preview th {
+            background: #34495e;
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+        .preview td {
+            padding: 8px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 36px;
+            font-weight: 700;
+        }
+        .stat-label {
+            font-size: 14px;
+            margin-top: 5px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Reset & Import Students</h1>
+        <p class="subtitle">Delete all existing students and import fresh data from CSV file</p>
+
+        <div class="warning">
+            <strong>WARNING:</strong> This tool will permanently delete ALL existing students and import new ones from your CSV file. This action cannot be undone!
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="currentStudentsCount">-</div>
+                <div class="stat-label">Current Students</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="toDeleteCount">-</div>
+                <div class="stat-label">To Delete</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="toImportCount">-</div>
+                <div class="stat-label">To Import</div>
+            </div>
+        </div>
+
+        <!-- STEP 1: Check Current Students -->
+        <div class="step-container">
+            <h2>Step 1: Check Current Database</h2>
+            <button class="btn-primary" onclick="checkCurrentStudents()">Check Current Students</button>
+            <div id="currentStudentsPreview"></div>
+        </div>
+
+        <!-- STEP 2: Upload CSV -->
+        <div class="step-container">
+            <h2>Step 2: Upload CSV File</h2>
+            <div class="info-box">
+                <strong>CSV Format:</strong> Your file should have columns for student name and optionally mode.
+                <br><strong>Supported columns:</strong> "student name" | "name" | "student" (required), "mode" (optional)
+                <br><strong>Example:</strong>
+                <pre style="margin-top: 10px; background: white; padding: 10px; border-radius: 4px;">student name,mode
+Sanway,Online
+Aditya Shaw,Offline
+Abhirup Mondal,Online</pre>
+            </div>
+            
+            <div class="file-input-wrapper">
+                <input type="file" id="csvFile" accept=".csv" onchange="handleFileSelect(event)">
+                <label for="csvFile" class="file-input-label">Choose CSV File</label>
+                <span class="file-name" id="fileName"></span>
+            </div>
+
+            <div id="csvPreview"></div>
+        </div>
+
+        <!-- STEP 3: Execute -->
+        <div class="step-container">
+            <h2>Step 3: Execute Reset & Import</h2>
+            <p style="color: #7f8c8d; margin-bottom: 15px;">This will delete all current students and import the new ones from your CSV.</p>
+            
+            <button class="btn-danger" id="deleteBtn" onclick="deleteAllStudents()" disabled>
+                1. Delete All Current Students
+            </button>
+            <button class="btn-success" id="importBtn" onclick="importNewStudents()" disabled>
+                2. Import New Students
+            </button>
+            <button class="btn-primary" id="resetImportBtn" onclick="resetAndImport()" disabled>
+                Reset & Import (All in One)
+            </button>
+        </div>
+
+        <div class="step-container">
+            <button class="btn-secondary" onclick="window.location.href='admin.html'">Back to Admin Panel</button>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs,
+            deleteDoc,
+            doc,
+            Timestamp 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyALyA_Yod2TKWonP_oSFehR6-tKq9xDC3I",
+            authDomain: "ziel-d0064.firebaseapp.com",
+            projectId: "ziel-d0064",
+            storageBucket: "ziel-d0064.firebasestorage.app",
+            messagingSenderId: "249203765928",
+            appId: "1:249203765928:web:391650d800d197d902c89d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentStudents = [];
+        let newStudents = [];
+
+        // Check current students in database
+        window.checkCurrentStudents = async function() {
+            const statusDiv = document.getElementById('status');
+            const previewDiv = document.getElementById('currentStudentsPreview');
+            
+            statusDiv.className = 'status show loading';
+            statusDiv.innerHTML = 'Loading current students...';
+
+            try {
+                const snapshot = await getDocs(collection(db, 'students'));
+                currentStudents = [];
+                
+                snapshot.forEach(docSnap => {
+                    currentStudents.push({
+                        id: docSnap.id,
+                        ...docSnap.data()
+                    });
+                });
+
+                document.getElementById('currentStudentsCount').textContent = currentStudents.length;
+                document.getElementById('toDeleteCount').textContent = currentStudents.length;
+
+                if (currentStudents.length > 0) {
+                    previewDiv.innerHTML = `
+                        <div class="preview">
+                            <h3>Current Students (${currentStudents.length})</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Name</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${currentStudents.map((s, i) => `
+                                        <tr>
+                                            <td>${i + 1}</td>
+                                            <td>${s.name}</td>
+                                            <td>${s.status || 'active'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+
+                    document.getElementById('deleteBtn').disabled = false;
+                } else {
+                    previewDiv.innerHTML = '<p style="color: #2ecc71; margin-top: 10px;">No students in database. Ready to import fresh data.</p>';
+                }
+
+                statusDiv.className = 'status show success';
+                statusDiv.innerHTML = `Found ${currentStudents.length} students in database.`;
+
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.className = 'status show error';
+                statusDiv.innerHTML = `Error: ${error.message}`;
+            }
+        };
+
+        // Handle CSV file selection
+        window.handleFileSelect = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileName').textContent = file.name;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseCSV(text);
+            };
+            reader.readAsText(file);
+        };
+
+        // Parse CSV and preview
+        function parseCSV(text) {
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            if (lines.length === 0) {
+                alert('CSV file is empty!');
+                return;
+            }
+
+            // Get header - support both comma and pipe delimiters
+            const delimiter = text.includes('|') ? '|' : ',';
+            const header = lines[0].split(delimiter).map(h => h.trim().toLowerCase());
+            const nameIndex = header.findIndex(h => h === 'name' || h === 'student' || h === 'student name');
+            const modeIndex = header.findIndex(h => h === 'mode');
+
+            if (nameIndex === -1) {
+                alert('CSV must have a column named "name", "student", or "student name"');
+                return;
+            }
+
+            // Parse rows
+            newStudents = [];
+            for (let i = 1; i < lines.length; i++) {
+                const columns = lines[i].split(delimiter);
+                const name = columns[nameIndex]?.trim();
+                const mode = modeIndex !== -1 ? columns[modeIndex]?.trim() : null;
+                
+                if (name) {
+                    newStudents.push({
+                        name: name,
+                        mode: mode
+                    });
+                }
+            }
+
+            document.getElementById('toImportCount').textContent = newStudents.length;
+
+            // Show preview
+            const previewDiv = document.getElementById('csvPreview');
+            const hasMode = newStudents.some(s => s.mode);
+            
+            previewDiv.innerHTML = `
+                <div class="preview">
+                    <h3>Students to Import (${newStudents.length})</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                ${hasMode ? '<th>Mode</th>' : ''}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${newStudents.slice(0, 50).map((student, i) => `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${student.name}</td>
+                                    ${hasMode ? `<td>${student.mode || '-'}</td>` : ''}
+                                </tr>
+                            `).join('')}
+                            ${newStudents.length > 50 ? `<tr><td colspan="${hasMode ? '3' : '2'}" style="text-align: center; color: #7f8c8d;">... and ${newStudents.length - 50} more</td></tr>` : ''}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.getElementById('importBtn').disabled = false;
+            document.getElementById('resetImportBtn').disabled = false;
+        }
+
+        // Delete all current students
+        window.deleteAllStudents = async function() {
+            if (currentStudents.length === 0) {
+                alert('No students to delete. Check current students first.');
+                return;
+            }
+
+            const confirm1 = confirm(`Are you sure you want to delete ALL ${currentStudents.length} students?\n\nThis action cannot be undone!`);
+            if (!confirm1) return;
+
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status show loading';
+            statusDiv.innerHTML = 'Deleting all students...<div class="progress" id="deleteProgress"></div>';
+
+            const progressDiv = document.getElementById('deleteProgress');
+            let deleted = 0;
+
+            try {
+                for (const student of currentStudents) {
+                    await deleteDoc(doc(db, 'students', student.id));
+                    deleted++;
+                    progressDiv.textContent = `Deleted ${deleted}/${currentStudents.length}`;
+                }
+
+                statusDiv.className = 'status show success';
+                statusDiv.innerHTML = `Successfully deleted ${deleted} students!`;
+                
+                document.getElementById('currentStudentsCount').textContent = '0';
+                document.getElementById('toDeleteCount').textContent = '0';
+                currentStudents = [];
+
+                checkCurrentStudents();
+
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.className = 'status show error';
+                statusDiv.innerHTML = `Error: ${error.message}`;
+            }
+        };
+
+        // Import new students
+        window.importNewStudents = async function() {
+            if (newStudents.length === 0) {
+                alert('No students to import. Please upload a CSV file first.');
+                return;
+            }
+
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status show loading';
+            statusDiv.innerHTML = 'Importing students...<div class="progress" id="importProgress"></div>';
+
+            const progressDiv = document.getElementById('importProgress');
+            let imported = 0;
+
+            try {
+                for (const student of newStudents) {
+                    const studentData = {
+                        name: student.name || student,
+                        status: 'active',
+                        createdAt: Timestamp.now()
+                    };
+                    
+                    // Add mode if present
+                    if (student.mode) {
+                        studentData.mode = student.mode;
+                    }
+                    
+                    await addDoc(collection(db, 'students'), studentData);
+                    imported++;
+                    progressDiv.textContent = `Imported ${imported}/${newStudents.length}`;
+                }
+
+                statusDiv.className = 'status show success';
+                statusDiv.innerHTML = `Successfully imported ${imported} students!`;
+                
+                document.getElementById('currentStudentsCount').textContent = imported;
+                checkCurrentStudents();
+
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.className = 'status show error';
+                statusDiv.innerHTML = `Error: ${error.message}`;
+            }
+        };
+
+        // Reset and import in one go
+        window.resetAndImport = async function() {
+            if (newStudents.length === 0) {
+                alert('No students to import. Please upload a CSV file first.');
+                return;
+            }
+
+            const confirm1 = confirm(
+                `RESET & IMPORT\n\n` +
+                `This will:\n` +
+                `1. Delete ${currentStudents.length} existing students\n` +
+                `2. Import ${newStudents.length} new students\n\n` +
+                `Continue?`
+            );
+            if (!confirm1) return;
+
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status show loading';
+            
+            try {
+                // Step 1: Delete all
+                if (currentStudents.length > 0) {
+                    statusDiv.innerHTML = 'Step 1: Deleting existing students...<div class="progress" id="deleteProgress"></div>';
+                    const deleteProgress = document.getElementById('deleteProgress');
+                    let deleted = 0;
+
+                    for (const student of currentStudents) {
+                        await deleteDoc(doc(db, 'students', student.id));
+                        deleted++;
+                        deleteProgress.textContent = `Deleted ${deleted}/${currentStudents.length}`;
+                    }
+                }
+
+                // Step 2: Import new
+                statusDiv.innerHTML = 'Step 2: Importing new students...<div class="progress" id="importProgress"></div>';
+                const importProgress = document.getElementById('importProgress');
+                let imported = 0;
+
+                for (const student of newStudents) {
+                    const studentData = {
+                        name: student.name || student,
+                        status: 'active',
+                        createdAt: Timestamp.now()
+                    };
+                    
+                    // Add mode if present
+                    if (student.mode) {
+                        studentData.mode = student.mode;
+                    }
+                    
+                    await addDoc(collection(db, 'students'), studentData);
+                    imported++;
+                    importProgress.textContent = `Imported ${imported}/${newStudents.length}`;
+                }
+
+                statusDiv.className = 'status show success';
+                statusDiv.innerHTML = `
+                    <strong>Complete!</strong><br>
+                    Deleted: ${currentStudents.length} students<br>
+                    Imported: ${imported} students<br>
+                    <br>
+                    <a href="admin.html">Go to Admin Panel</a>
+                `;
+                
+                document.getElementById('currentStudentsCount').textContent = imported;
+                document.getElementById('toDeleteCount').textContent = '0';
+                checkCurrentStudents();
+
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.className = 'status show error';
+                statusDiv.innerHTML = `Error: ${error.message}`;
+            }
+        };
+
+        // Auto-check on load
+        window.addEventListener('load', checkCurrentStudents);
+    </script>
+</body>
+</html>

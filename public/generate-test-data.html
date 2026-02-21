@@ -483,10 +483,8 @@
         const paymentCoverage = document.getElementById('paymentCoverage').value;
         const sheetCoverage = document.getElementById('sheetCoverage').value;
 
-        if (confirm(`Generate ${count} test entries?\\n\\nThis will create random data for testing purposes.`)) {
-            document.getElementById('generateForm').style.display = 'none';
-            await generateEntries(count, dateRange, paymentCoverage, sheetCoverage);
-        }
+        document.getElementById('generateForm').style.display = 'none';
+        await generateEntries(count, dateRange, paymentCoverage, sheetCoverage);
     });
 
     // Initialize
