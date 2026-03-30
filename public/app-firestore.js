@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { 
-    getFirestore, 
+    initializeFirestore,
     collection, 
     addDoc, 
     getDocs, 
@@ -28,7 +28,10 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+    useFetchStreams: false
+});
 
 // Helper function to format date as DD/MM/YYYY
 function formatDateDDMMYYYY(date) {
@@ -2584,7 +2587,7 @@ if (window.location.pathname.includes('admin.html')) {
         const logoutBtn = document.getElementById("logout-btn");
 
         // Check if admin is logged in
-        if (localStorage.getItem("adminLoggedIn") === "true") {
+        if (localStorage.getItem("role") === "admin") {
             if (loginSection) loginSection.style.display = "none";
             if (dashboardSection) dashboardSection.style.display = "block";
             initializeData();
@@ -2594,28 +2597,126 @@ if (window.location.pathname.includes('admin.html')) {
             if (dashboardSection) dashboardSection.style.display = "none";
         }
 
-        // Admin login button
-        const adminLoginBtn = document.getElementById("admin-login-btn");
-        if (adminLoginBtn) {
-            adminLoginBtn.addEventListener('click', function() {
-                const pwd = document.getElementById("admin-password").value;
-                if (pwd === "admin123") {
-                    localStorage.setItem("adminLoggedIn", "true");
-                    loginSection.style.display = "none";
-                    dashboardSection.style.display = "block";
-                    initializeData();
-                    filterTeachers();
-                } else {
-                    alert("Incorrect Password!");
+        const REGISTERED_ADMIN_EMAILS = ["rishabhsunny25@gmail.com", "info@zielclasses.com"];
+
+        // Send OTP button
+        const sendOtpBtn = document.getElementById("send-otp-btn");
+        if (sendOtpBtn) {
+            sendOtpBtn.addEventListener('click', async function() {
+                const enteredEmail = (document.getElementById("admin-email")?.value || "").trim().toLowerCase();
+                const errorMsg = document.getElementById("error-msg");
+
+                if (!enteredEmail) {
+                    if (errorMsg) errorMsg.textContent = "Please enter your email.";
+                    return;
+                }
+
+                if (!REGISTERED_ADMIN_EMAILS.includes(enteredEmail)) {
+                    if (errorMsg) errorMsg.textContent = "Email not registered as admin.";
+                    return;
+                }
+
+                sendOtpBtn.disabled = true;
+                sendOtpBtn.textContent = "Sending...";
+                if (errorMsg) errorMsg.textContent = "";
+
+                try {
+                    adminOTP = generateOTP();
+                    otpTimestamp = Date.now();
+
+                    await sendOTPEmail(adminOTP, enteredEmail);
+
+                    document.getElementById("email-step").style.display = "none";
+                    document.getElementById("otp-step").style.display = "block";
+
+                    const maskedEmail = document.getElementById("masked-email");
+                    if (maskedEmail) {
+                        maskedEmail.textContent = enteredEmail.replace(/(.{2}).*@/, "$1***@");
+                    }
+                } catch (error) {
+                    if (errorMsg) errorMsg.textContent = "Failed to send OTP. Please try again.";
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.textContent = "Send OTP to Email";
                 }
             });
         }
 
+        // Verify OTP button
+        const verifyOtpBtn = document.getElementById("verify-otp-btn");
+        if (verifyOtpBtn) {
+            verifyOtpBtn.addEventListener('click', function() {
+                const enteredOTP = (document.getElementById("otp-input")?.value || "").trim();
+                const errorMsg = document.getElementById("error-msg");
+
+                if (!enteredOTP) {
+                    if (errorMsg) errorMsg.textContent = "Please enter the OTP.";
+                    return;
+                }
+
+                verifyOtpBtn.disabled = true;
+                verifyOtpBtn.textContent = "Verifying...";
+
+                const result = verifyOTP(enteredOTP);
+                if (result.valid) {
+                    localStorage.setItem("role", "admin");
+                    localStorage.setItem("adminLoginTime", Date.now().toString());
+                    localStorage.removeItem("teacherName");
+                    localStorage.removeItem("teacherId");
+                    localStorage.removeItem("currentTeacherName");
+
+                    if (loginSection) loginSection.style.display = "none";
+                    if (dashboardSection) dashboardSection.style.display = "block";
+                    initializeData();
+                    filterTeachers();
+                } else {
+                    if (errorMsg) errorMsg.textContent = result.message;
+                    verifyOtpBtn.disabled = false;
+                    verifyOtpBtn.textContent = "Verify OTP";
+                }
+            });
+        }
+
+        // Resend OTP & Change Email buttons
+        ["resend-otp-btn", "change-email-btn"].forEach(id => {
+            document.getElementById(id)?.addEventListener('click', function() {
+                document.getElementById("email-step").style.display = "block";
+                document.getElementById("otp-step").style.display = "none";
+
+                const errorMsg = document.getElementById("error-msg");
+                if (errorMsg) errorMsg.textContent = "";
+
+                if (sendOtpBtn) {
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.textContent = "Send OTP to Email";
+                }
+            });
+        });
+
         // Logout button
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', function() {
-                localStorage.removeItem("adminLoggedIn");
-                window.location.reload();
+        logoutBtn?.addEventListener('click', function() {
+            localStorage.removeItem("role");
+            localStorage.removeItem("adminLoginTime");
+            if (loginSection) loginSection.style.display = "flex";
+            if (dashboardSection) dashboardSection.style.display = "none";
+        });
+        
+        // Sort field and order change listeners
+        const sortField = document.getElementById("sortField");
+        const sortOrder = document.getElementById("sortOrder");
+        
+        if (sortField) {
+            sortField.addEventListener('change', function() {
+                if (filteredAdminEntries && filteredAdminEntries.length > 0) {
+                    applyAdminFilters();
+                }
+            });
+        }
+        
+        if (sortOrder) {
+            sortOrder.addEventListener('change', function() {
+                if (filteredAdminEntries && filteredAdminEntries.length > 0) {
+                    applyAdminFilters();
+                }
             });
         }
     });
@@ -2767,6 +2868,10 @@ window.loadAdminEntries = async function() {
 
         // Initially show all entries
         filteredAdminEntries = [...allAdminEntries];
+        
+        // Apply default sorting (date descending)
+        applySorting();
+        
         currentPage = 1;
         
         // Update display
@@ -2849,10 +2954,73 @@ window.applyAdminFilters = function() {
         return true;
     });
     
+    // Apply sorting
+    applySorting();
+    
     currentPage = 1;
     displayAdminEntries();
     updateEntryStats(allAdminEntries, filteredAdminEntries);
 };
+
+// Function to apply sorting to filtered entries
+function applySorting() {
+    const sortField = document.getElementById("sortField")?.value || "date";
+    const sortOrder = document.getElementById("sortOrder")?.value || "desc";
+    
+    filteredAdminEntries.sort((a, b) => {
+        let valueA, valueB;
+        
+        switch(sortField) {
+            case 'date':
+                valueA = a.date || '';
+                valueB = b.date || '';
+                break;
+            case 'teacher':
+                valueA = (a.teacherName || '').toLowerCase();
+                valueB = (b.teacherName || '').toLowerCase();
+                break;
+            case 'student':
+                valueA = (a.studentName || a.student || '').toLowerCase();
+                valueB = (b.studentName || b.student || '').toLowerCase();
+                break;
+            case 'time':
+                valueA = a.timeFrom || a.startTime || '';
+                valueB = b.timeFrom || b.startTime || '';
+                break;
+            case 'classes':
+                valueA = parseInt(a.classCount) || 0;
+                valueB = parseInt(b.classCount) || 0;
+                break;
+            case 'sheet':
+                valueA = a.sheetMade === 'yes' ? 1 : 0;
+                valueB = b.sheetMade === 'yes' ? 1 : 0;
+                break;
+            case 'payment':
+                valueA = (a.payment || '').toLowerCase();
+                valueB = (b.payment || '').toLowerCase();
+                break;
+            case 'subject':
+                valueA = (a.subject || '').toLowerCase();
+                valueB = (b.subject || '').toLowerCase();
+                break;
+            case 'topic':
+                valueA = (a.topic || '').toLowerCase();
+                valueB = (b.topic || '').toLowerCase();
+                break;
+            default:
+                valueA = a.date || '';
+                valueB = b.date || '';
+        }
+        
+        // Compare values
+        let comparison = 0;
+        if (valueA > valueB) comparison = 1;
+        if (valueA < valueB) comparison = -1;
+        
+        // Apply sort order
+        return sortOrder === 'asc' ? comparison : -comparison;
+    });
+}
 
 // Reset filters
 window.resetAdminFilters = function() {
@@ -2862,8 +3030,11 @@ window.resetAdminFilters = function() {
     document.getElementById("filterStudent").value = "";
     document.getElementById("filterSheetMade").value = "";
     document.getElementById("filterSearch").value = "";
+    document.getElementById("sortField").value = "date";
+    document.getElementById("sortOrder").value = "desc";
     
     filteredAdminEntries = [...allAdminEntries];
+    applySorting();
     currentPage = 1;
     displayAdminEntries();
     updateEntryStats(allAdminEntries, filteredAdminEntries);
@@ -4432,36 +4603,74 @@ function generatePDFTemplate(title, content) {
 
 // ===== PDF COLUMN OPTIONS MODAL =====
 window.openPDFOptionsModal = function() {
-    document.getElementById('pdfOptionsModal').style.display = 'block';
+    const modal = document.getElementById('pdfOptionsModal');
+    if (modal) {
+        modal.style.display = 'block';
+        return;
+    }
+
+    // Fallback for layouts where the modal markup is not present.
+    console.warn('pdfOptionsModal not found. Exporting with default columns.');
+    generateStudentPDFCustom({
+        date: true,
+        teacher: true,
+        subject: true,
+        time: true,
+        classes: true,
+        sheet: true,
+        payment: true
+    });
 }
 
 window.closePDFOptionsModal = function() {
-    document.getElementById('pdfOptionsModal').style.display = 'none';
+    const modal = document.getElementById('pdfOptionsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 window.selectAllPDFColumns = function() {
-    document.getElementById('pdfCol_date').checked = true;
-    document.getElementById('pdfCol_teacher').checked = true;
-    document.getElementById('pdfCol_subject').checked = true;
-    document.getElementById('pdfCol_time').checked = true;
-    document.getElementById('pdfCol_classes').checked = true;
-    document.getElementById('pdfCol_sheet').checked = true;
-    document.getElementById('pdfCol_payment').checked = true;
+    const checkboxIds = [
+        'pdfCol_date',
+        'pdfCol_teacher',
+        'pdfCol_subject',
+        'pdfCol_time',
+        'pdfCol_classes',
+        'pdfCol_sheet',
+        'pdfCol_payment'
+    ];
+
+    checkboxIds.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) checkbox.checked = true;
+    });
 }
 
 window.generateStudentPDFWithOptions = async function() {
-    // Get selected columns
-    const selectedColumns = {
-        date: document.getElementById('pdfCol_date').checked,
-        teacher: document.getElementById('pdfCol_teacher').checked,
-        subject: document.getElementById('pdfCol_subject').checked,
-        time: document.getElementById('pdfCol_time').checked,
-        classes: document.getElementById('pdfCol_classes').checked,
-        sheet: document.getElementById('pdfCol_sheet').checked,
-        payment: document.getElementById('pdfCol_payment').checked
-    };
+    const hasModalCheckboxes = !!document.getElementById('pdfCol_date');
+
+    // If modal checkboxes do not exist in current page, export with defaults.
+    const selectedColumns = hasModalCheckboxes
+        ? {
+            date: document.getElementById('pdfCol_date')?.checked ?? true,
+            teacher: document.getElementById('pdfCol_teacher')?.checked ?? true,
+            subject: document.getElementById('pdfCol_subject')?.checked ?? true,
+            time: document.getElementById('pdfCol_time')?.checked ?? true,
+            classes: document.getElementById('pdfCol_classes')?.checked ?? true,
+            sheet: document.getElementById('pdfCol_sheet')?.checked ?? true,
+            payment: document.getElementById('pdfCol_payment')?.checked ?? true
+        }
+        : {
+            date: true,
+            teacher: true,
+            subject: true,
+            time: true,
+            classes: true,
+            sheet: true,
+            payment: true
+        };
     
-    // Close modal
+    // Close modal (safe no-op if modal doesn't exist)
     closePDFOptionsModal();
     
     // Generate PDF with selected columns
@@ -4720,7 +4929,10 @@ window.generateStudentPDFCustom = async function(selectedColumns) {
     const hasSelection = Object.values(selectedColumns).some(val => val === true);
     if (!hasSelection) {
         alert("Please select at least one column to display in the PDF!");
-        openPDFOptionsModal();
+        const modal = document.getElementById('pdfOptionsModal');
+        if (modal) {
+            openPDFOptionsModal();
+        }
         return;
     }
     
@@ -9639,6 +9851,7 @@ window.loadSessionReports = async function() {
 function populateSessionReportFilters() {
     const teacherMap = new Map();
     const students = new Set();
+    const courses = new Set();
     
     allSessionReports.forEach(session => {
         if (session.teacherName) {
@@ -9646,6 +9859,9 @@ function populateSessionReportFilters() {
         }
         if (session.studentName) {
             students.add(session.studentName);
+        }
+        if (session.subject) {
+            courses.add(session.subject);
         }
     });
     
@@ -9673,13 +9889,25 @@ function populateSessionReportFilters() {
                 studentFilter.innerHTML += `<option value="${student}" ${student === currentValue ? 'selected' : ''}>${student}</option>`;
             });
     }
+    
+    // Course filter
+    const courseFilter = document.getElementById('sessionReportCourseFilter');
+    if (courseFilter) {
+        const currentValue = courseFilter.value;
+        courseFilter.innerHTML = '<option value="">All Courses</option>';
+        Array.from(courses)
+            .sort()
+            .forEach(course => {
+                courseFilter.innerHTML += `<option value="${course}" ${course === currentValue ? 'selected' : ''}>${course}</option>`;
+            });
+    }
 }
 
 // Apply filters
 window.applySessionReportFilters = function() {
     const teacher = document.getElementById('sessionReportTeacherFilter')?.value;
     const student = document.getElementById('sessionReportStudentFilter')?.value;
-    const type = document.getElementById('sessionReportTypeFilter')?.value;
+    const course = document.getElementById('sessionReportCourseFilter')?.value;
     const dateFrom = document.getElementById('sessionReportDateFrom')?.value;
     const dateTo = document.getElementById('sessionReportDateTo')?.value;
     
@@ -9690,8 +9918,8 @@ window.applySessionReportFilters = function() {
         // Student filter
         if (student && session.studentName !== student) return false;
         
-        // Type filter
-        if (type && session.sessionType !== type) return false;
+        // Course filter
+        if (course && session.subject !== course) return false;
         
         // Date range filter
         if (dateFrom && session.sessionDate < dateFrom) return false;
@@ -9707,7 +9935,7 @@ window.applySessionReportFilters = function() {
 window.resetSessionReportFilters = function() {
     document.getElementById('sessionReportTeacherFilter').value = '';
     document.getElementById('sessionReportStudentFilter').value = '';
-    document.getElementById('sessionReportTypeFilter').value = '';
+    document.getElementById('sessionReportCourseFilter').value = '';
     document.getElementById('sessionReportDateFrom').value = '';
     document.getElementById('sessionReportDateTo').value = '';
     
@@ -9720,57 +9948,104 @@ function displaySessionReports() {
     const div = document.getElementById('adminDoubtSessionsList');
     if (!div) return;
     
-    // Update statistics
+    // Update total count
     const totalCount = filteredSessionReports.length;
-    const doubtCount = filteredSessionReports.filter(s => s.sessionType === 'doubt').length;
-    const demoCount = filteredSessionReports.filter(s => s.sessionType === 'demo').length;
-    const uniqueStudents = new Set(filteredSessionReports.map(s => s.studentName).filter(Boolean));
-    
-    document.getElementById('sessionReportTotalCount').textContent = totalCount;
-    document.getElementById('sessionReportDoubtCount').textContent = doubtCount;
-    document.getElementById('sessionReportDemoCount').textContent = demoCount;
-    document.getElementById('sessionReportStudentCount').textContent = uniqueStudents.size;
+    const countElement = document.getElementById('sessionReportTotalCount');
+    if (countElement) {
+        countElement.textContent = `${totalCount} ${totalCount === 1 ? 'session' : 'sessions'}`;
+    }
     
     // Display sessions
     if (filteredSessionReports.length === 0) {
-        div.innerHTML = '<p class="empty-state" style="text-align: center; padding: 48px; color: #7f8c8d;">?? No sessions match your filters</p>';
+        div.innerHTML = '<p class="empty-state" style="text-align: center; padding: 48px; color: #7f8c8d;">📭 No sessions match your filters</p>';
         return;
     }
     
-    let html = '<div style="display: grid; gap: 16px;">';
-    filteredSessionReports.forEach(session => {
-        const sessionTypeLabel = session.sessionType === 'doubt' ? 'Doubt Clearing Session' : 'Demo Session';
-        const sessionTypeColor = session.sessionType === 'doubt' ? '#1a73e8' : '#90ee90';
+    // Create table view
+    let html = '<table style="width: 100%; border-collapse: collapse;">';
+    html += '<thead><tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">';
+    html += '<th style="padding: 14px 12px; text-align: left; font-weight: 600; color: #2c2c2c; font-size: 14px;">Date</th>';
+    html += '<th style="padding: 14px 12px; text-align: left; font-weight: 600; color: #2c2c2c; font-size: 14px;">Student Name</th>';
+    html += '<th style="padding: 14px 12px; text-align: left; font-weight: 600; color: #2c2c2c; font-size: 14px;">Teacher</th>';
+    html += '<th style="padding: 14px 12px; text-align: left; font-weight: 600; color: #2c2c2c; font-size: 14px;">Class</th>';
+    html += '<th style="padding: 14px 12px; text-align: left; font-weight: 600; color: #2c2c2c; font-size: 14px;">Subject</th>';
+    html += '<th style="padding: 14px 12px; text-align: left; font-weight: 600; color: #2c2c2c; font-size: 14px;">Type</th>';
+    html += '<th style="padding: 14px 12px; text-align: left; font-weight: 600; color: #2c2c2c; font-size: 14px;">Remarks</th>';
+    html += '</tr></thead><tbody>';
+    
+    filteredSessionReports.forEach((session, index) => {
+        const sessionTypeLabel = session.sessionType === 'doubt' ? 'Doubt' : 'Demo';
+        const sessionTypeColor = session.sessionType === 'doubt' ? '#1a73e8' : '#28a745';
         const formattedDate = session.sessionDate ? formatDateDDMMYYYY(new Date(session.sessionDate + 'T00:00:00')) : 'N/A';
-        const createdDate = session.createdAt?.toDate ? formatDateDDMMYYYY(session.createdAt.toDate()) : 'N/A';
+        const sessionTime = session.sessionTime || 'N/A';
+        const rowBg = index % 2 === 0 ? '#ffffff' : '#f8f9fa';
+        
+        // Create a unique session identifier for the onclick
+        const sessionDataJson = JSON.stringify({
+            dateTime: `${formattedDate} ${sessionTime}`,
+            studentName: session.studentName || 'N/A',
+            teacherName: session.teacherName || 'N/A',
+            class: session.studentClass || 'N/A',
+            subject: session.subject || 'N/A',
+            remarks: session.remarks || ''
+        }).replace(/"/g, '&quot;');
         
         html += `
-            <div style="background: rgba(255, 255, 255, 0.95); border-left: 4px solid ${sessionTypeColor}; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(44, 44, 44, 0.1);">
-                <div style="display: grid; grid-template-columns: 1fr auto; gap: 20px; margin-bottom: 16px;">
-                    <div>
-                        <div style="font-weight: 600; color: #2c2c2c; font-size: 16px; font-family: 'Roboto', sans-serif; margin-bottom: 8px;">${session.studentName}</div>
-                        <div style="color: #666; font-size: 13px; font-family: 'Roboto', sans-serif; margin-bottom: 6px;">
-                            <span style="background: ${sessionTypeColor}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">${sessionTypeLabel}</span>
-                            <span style="margin-left: 12px;"><strong>Session Date:</strong> ${formattedDate}</span>
-                        </div>
-                        <div style="color: #999; font-size: 12px; font-family: 'Roboto', sans-serif;">
-                            Logged on: ${createdDate}
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 13px; color: #1a73e8; font-weight: 600; font-family: 'Roboto', sans-serif;">${session.teacherName || 'N/A'}</div>
-                        <div style="font-size: 12px; color: #666; font-family: 'Roboto', sans-serif; margin-top:4px;">${session.teacherEmail || ''}</div>
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; font-size: 14px; color: #666666; font-family: 'Roboto', sans-serif; padding: 16px; background: #f8f9fa; border-radius: 6px;">
-                    <div><strong style="color: #2c2c2c;">Class:</strong> ${session.studentClass || 'N/A'}</div>
-                    <div><strong style="color: #2c2c2c;">Subject:</strong> ${session.subject || 'N/A'}</div>
-                </div>
-                ${session.remarks ? `<div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 3px solid #ffc107; border-radius: 4px; font-size: 13px; color: #856404; font-family: 'Roboto', sans-serif;"><strong>Remarks:</strong> ${session.remarks}</div>` : ''}
-            </div>
+            <tr style="background: ${rowBg}; border-bottom: 1px solid #dee2e6; cursor: pointer; transition: background 0.2s;" 
+                onclick='openSessionDetailModal(${sessionDataJson})'
+                onmouseover="this.style.background='#e3f2fd'" 
+                onmouseout="this.style.background='${rowBg}'">
+                <td style="padding: 14px 12px; color: #2c2c2c; font-size: 14px; font-weight: 500;">${formattedDate}</td>
+                <td style="padding: 14px 12px; color: #2c2c2c; font-size: 14px; font-weight: 500;">${session.studentName || 'N/A'}</td>
+                <td style="padding: 14px 12px; color: #2c2c2c; font-size: 14px;">
+                    <div style="font-weight: 500;">${session.teacherName || 'N/A'}</div>
+                    ${session.teacherEmail ? `<div style="font-size: 12px; color: #666; margin-top: 2px;">${session.teacherEmail}</div>` : ''}
+                </td>
+                <td style="padding: 14px 12px; color: #2c2c2c; font-size: 14px;">${session.studentClass || 'N/A'}</td>
+                <td style="padding: 14px 12px; color: #2c2c2c; font-size: 14px;">${session.subject || 'N/A'}</td>
+                <td style="padding: 14px 12px;">
+                    <span style="background: ${sessionTypeColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${sessionTypeLabel}</span>
+                </td>
+                <td style="padding: 14px 12px; color: #666; font-size: 13px;">${session.remarks || '-'}</td>
+            </tr>
         `;
     });
-    html += '</div>';
     
+    html += '</tbody></table>';
     div.innerHTML = html;
 }
+// Open session detail modal
+window.openSessionDetailModal = function(sessionData) {
+    const modal = document.getElementById('sessionDetailModal');
+    if (!modal) return;
+    
+    // Populate modal fields
+    document.getElementById('modalSessionDateTime').textContent = sessionData.dateTime || 'N/A';
+    document.getElementById('modalStudentName').textContent = sessionData.studentName || 'N/A';
+    document.getElementById('modalTeacherName').textContent = sessionData.teacherName || 'N/A';
+    document.getElementById('modalClass').textContent = sessionData.class || 'N/A';
+    document.getElementById('modalSubject').textContent = sessionData.subject || 'N/A';
+    
+    // Handle remarks
+    const remarksContainer = document.getElementById('modalRemarksContainer');
+    const remarksText = document.getElementById('modalRemarks');
+    if (sessionData.remarks && sessionData.remarks.trim()) {
+        remarksText.textContent = sessionData.remarks;
+        remarksContainer.style.display = 'block';
+    } else {
+        remarksContainer.style.display = 'none';
+    }
+    
+    // Show modal
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+};
+
+// Close session detail modal
+window.closeSessionDetailModal = function() {
+    const modal = document.getElementById('sessionDetailModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+};

@@ -1,0 +1,220 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "deploy-hosting",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-hosting",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-hosting",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-hosting-verify",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-hosting-fix-firestore-timeout",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-find-v130",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"log",
+				"--oneline",
+				"--all",
+				"-S",
+				"v=130",
+				"--",
+				"public"
+			]
+		},
+		{
+			"label": "git-find-v135",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"log",
+				"--oneline",
+				"--all",
+				"-S",
+				"v=135",
+				"--",
+				"public"
+			]
+		},
+		{
+			"label": "deploy-hosting-v130-rollback",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-hosting-firestore-connectivity-fix",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-hosting-v130-rollback",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-hosting-v135-restore",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-hosting-v135-subject-fix",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-log-teacher",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"log",
+				"--oneline",
+				"-n",
+				"30",
+				"--",
+				"public/teacher.html"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-restore-teacher-head",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"restore",
+				"--source=HEAD",
+				"--",
+				"public/teacher.html"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-hosting-v135-teacher-full-features",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only",
+				"hosting"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-prepush-check",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-branch-check",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"branch",
+				"--show-current"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-remote-check",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"remote",
+				"-v"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-commit-all-v135",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"-A"
+			],
+			"isBackground": false
+		}
+	]
+}
