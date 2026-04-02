@@ -235,6 +235,101 @@ footer {
     color: #667eea;
 }
 
+/* --- PREMIUM ACCOUNTABILITY SYSTEM STYLES --- */
+
+/* The Blurred Background Overlay */
+.accountability-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* The Warning Card */
+.accountability-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 24px;
+    padding: 40px;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border-top: 8px solid #d32f2f;
+}
+
+.accountability-card h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 15px 0;
+    letter-spacing: -0.5px;
+}
+
+.accountability-card p {
+    color: #4a4a4a;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+/* Button Styling inside Overlay */
+.accountability-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 25px;
+}
+
+.btn-premium-fill {
+    background: #1a73e8;
+    color: white;
+    padding: 16px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.btn-premium-fill:hover {
+    background: #1557b0;
+    transform: scale(1.02);
+}
+
+.btn-premium-leave {
+    background: #ffffff;
+    color: #5f6368;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid #dadce0;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn-premium-leave:hover {
+    background: #f8f9fa;
+}
+
+/* Status Badge for Locked Accounts */
+.status-locked {
+    background: #fee2e2;
+    color: #b91c1c;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #f87171;
+}
+
 /* Login Page Styles */
 .login-container {
     display: flex;
@@ -242,6 +337,110 @@ footer {
     align-items: center;
     min-height: 100vh;
     padding: 20px;
+}
+
+/* Admin accountability monitor */
+.admin-card {
+    background: #ffffff;
+    border: 1px solid #e8eaed;
+    border-radius: 10px;
+    padding: 18px;
+}
+
+.premium-shadow {
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #2c2c2c;
+}
+
+.card-header p {
+    margin: 6px 0 14px;
+    color: #5f6368;
+    font-size: 13px;
+}
+
+.admin-list-container {
+    display: grid;
+    gap: 10px;
+}
+
+.loading-spinner {
+    color: #5f6368;
+    font-size: 13px;
+    padding: 6px 0;
+}
+
+.teacher-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #eceff1;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.teacher-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.teacher-actions {
+    display: flex;
+    align-items: center;
+}
+
+.status-success {
+    color: #1b5e20;
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.badge-locked {
+    background: #ffebee;
+    color: #c62828;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid #ef9a9a;
+}
+
+.badge-pending {
+    background: #fff3e0;
+    color: #ef6c00;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid #ffcc80;
+}
+
+.btn-restore {
+    background: #2e7d32;
+    color: #ffffff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-restore:hover {
+    background: #1b5e20;
+    transform: translateY(-1px);
 }
 
 .login-box {
@@ -1190,5 +1389,48 @@ footer {
     .classes-table th,
     .classes-table td {
         padding: 6px 4px;
+    }
+}
+
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 11000;
+}
+
+.premium-toast {
+    background: #2e7d32;
+    color: #fff;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+    margin-bottom: 10px;
+    animation: slideInRight 0.4s ease-out, fadeOut 0.5s 3.5s forwards;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
     }
 }

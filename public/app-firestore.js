@@ -14,8 +14,10 @@ import {
     onSnapshot,
     orderBy,
     Timestamp,
-    serverTimestamp
+    serverTimestamp,
+    writeBatch
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
 // Initialize Firebase
 const firebaseConfig = {
@@ -32,6 +34,122 @@ const db = initializeFirestore(app, {
     experimentalAutoDetectLongPolling: true,
     useFetchStreams: false
 });
+
+const VAPID_KEY = 'BNztvlb9Gjr0qGVEP21EwmBPEv3e4BP0HsfMMGqeOORTaoPIotw7RzySfd6WQ6qdL-loZga8zKFdGRf6sDPTL7o';
+
+let messaging = null;
+let messagingRegistration = null;
+try {
+    messaging = getMessaging(app);
+} catch (error) {
+    console.warn('Firebase Messaging unavailable in this browser context.', error);
+}
+
+// ========== PWA & NOTIFICATION INITIALIZATION ==========
+
+async function initializeAppFeatures() {
+    if (!('serviceWorker' in navigator)) return;
+
+    try {
+        messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('Messaging Service Worker registered with scope:', messagingRegistration.scope);
+
+        await navigator.serviceWorker.register('/sw.js');
+    } catch (error) {
+        console.error('Service Worker registration failed:', error);
+    }
+}
+
+window.setupNotifications = async function() {
+    if (!('Notification' in window)) {
+        alert('This browser does not support notifications. Please use Chrome or Edge.');
+        return;
+    }
+
+    if (!window.isSecureContext) {
+        alert('Notifications require HTTPS. Please open the live HTTPS site to enable alerts.');
+        return;
+    }
+
+    if (!('serviceWorker' in navigator)) {
+        alert('Service Worker is not supported in this browser, so notifications cannot be enabled.');
+        return;
+    }
+
+    if (!messaging) {
+        alert('Notification service failed to initialize. Please refresh the page and try again.');
+        return;
+    }
+
+    try {
+        if (Notification.permission === 'denied') {
+            alert('Notification permission is blocked in browser settings. Allow notifications for this site, then try again.');
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            alert('Notifications are blocked. Please allow them in browser settings.');
+            return;
+        }
+
+        if (!messagingRegistration && 'serviceWorker' in navigator) {
+            messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        }
+
+        const token = await getToken(messaging, {
+            serviceWorkerRegistration: messagingRegistration,
+            vapidKey: VAPID_KEY
+        });
+
+        if (!token) {
+            alert('Could not get notification token. Please try again after refreshing.');
+            return;
+        }
+
+        const teacherId = localStorage.getItem('teacherId');
+        const role = localStorage.getItem('role');
+
+        if (role === 'teacher' && teacherId) {
+            await updateDoc(doc(db, 'teachers', teacherId), {
+                deviceToken: token,
+                notificationsEnabled: true,
+                lastTokenUpdate: serverTimestamp()
+            });
+            console.log('Device Token saved to Firestore');
+            if (Notification.permission === 'granted') {
+                new Notification('ZIEL Alerts Enabled', {
+                    body: 'You will now receive reminder notifications.',
+                    icon: '/icon-192.png'
+                });
+            }
+            alert('Notifications enabled for ZIEL Classes!');
+            return;
+        }
+
+        alert('Notifications enabled, but no teacher session found. Please login as teacher and enable again.');
+    } catch (error) {
+        console.error('Notification Setup Failed:', error);
+        alert(`Notification setup failed: ${error?.message || 'Unknown error'}`);
+    }
+};
+
+if (messaging) {
+    onMessage(messaging, (payload) => {
+        console.log('Message received in foreground:', payload);
+        const title = payload?.notification?.title || 'ZIEL Classes Alert';
+        const body = payload?.notification?.body || 'Please check your dashboard.';
+
+        if (Notification.permission === 'granted') {
+            new Notification(title, {
+                body,
+                icon: '/icon-192.png'
+            });
+        }
+
+        alert(`${title}\n${body}`);
+    });
+}
 
 // Helper function to format date as DD/MM/YYYY
 function formatDateDDMMYYYY(date) {
@@ -61,6 +179,49 @@ let adminOTP = null;
 let otpTimestamp = null;
 let isOTPSending = false; // Prevent duplicate sends
 const OTP_VALIDITY = 5 * 60 * 1000; // 5 minutes
+let reminderUnsubscribe = null;
+let accountabilityTrackerUnsubscribe = null;
+let bulkUnlockInProgress = false;
+
+// Get Kolkata date in YYYY-MM-DD format regardless of device timezone
+function getKolkataDateISO() {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
+}
+
+function getKolkataDateWithOffsetISO(dayOffset = 0) {
+    const now = new Date();
+    const utcMs = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const kolkataMs = utcMs + (5.5 * 60 * 60 * 1000) + (dayOffset * 24 * 60 * 60 * 1000);
+    const kolkataDate = new Date(kolkataMs);
+    return `${kolkataDate.getFullYear()}-${String(kolkataDate.getMonth() + 1).padStart(2, '0')}-${String(kolkataDate.getDate()).padStart(2, '0')}`;
+}
+
+function getKolkataTimeParts() {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    }).formatToParts(new Date());
+
+    const hour = parseInt(parts.find((p) => p.type === 'hour')?.value || '0', 10);
+    const minute = parseInt(parts.find((p) => p.type === 'minute')?.value || '0', 10);
+    return { hour, minute };
+}
+
+function formatKolkataReadableDate() {
+    return new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    }).format(new Date());
+}
 
 // Generate 6-digit OTP
 function generateOTP() {
@@ -124,6 +285,305 @@ function verifyOTP(enteredOTP) {
     
     return { valid: false, message: 'Incorrect OTP. Please try again.' };
 }
+
+// ========== ACCOUNTABILITY FUNCTIONS ==========
+
+// 1) Teacher reminders between 10 PM and 12 AM Kolkata time.
+window.runReminderEngine = function() {
+    const teacherId = localStorage.getItem('teacherId');
+    const reminderOverlay = document.getElementById('statusOverlay');
+    if (!teacherId || !reminderOverlay) return;
+
+    if (!reminderUnsubscribe) {
+        reminderUnsubscribe = onSnapshot(doc(db, 'teachers', teacherId), async (docSnap) => {
+            const data = docSnap.data() || {};
+            const { hour, minute } = getKolkataTimeParts();
+            const todayKolkata = getKolkataDateISO();
+            const isPreMidnight = hour >= 1 && hour <= 23;
+            const isReminderWindow = hour >= 22 && hour <= 23;
+            const isPostMidnight = hour === 0;
+            const yesterdayKolkata = getKolkataDateWithOffsetISO(-1);
+            const submittedYesterday = data.lastSubmissionDate === yesterdayKolkata;
+            const pendingAtDeadline = !data.hasSubmittedToday && !data.isOnLeave && !submittedYesterday;
+            const lockDate = data.lockDate || null;
+
+            if (data.isLocked) {
+                if (isPreMidnight) {
+                    await updateDoc(doc(db, 'teachers', teacherId), {
+                        isLocked: false,
+                        lockDate: null
+                    });
+                    return;
+                }
+                if (lockDate && lockDate !== todayKolkata) {
+                    await updateDoc(doc(db, 'teachers', teacherId), {
+                        isLocked: false,
+                        lockDate: null
+                    });
+                    return;
+                }
+                alert('🚫 ACCESS DENIED\n\nYou did not fill your class data before 12:00 AM. Please contact admin.');
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.replace('index.html');
+                return;
+            }
+
+            if (isReminderWindow && pendingAtDeadline) {
+                reminderOverlay.style.display = 'flex';
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+                const nowMs = Date.now();
+                const shouldNotify = !window.__lastReminderNotifyAt || (nowMs - window.__lastReminderNotifyAt > 60000);
+                if (shouldNotify && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                    new Notification('Reminder: Fill Today\'s Class Data', {
+                        body: `Pending update. Submit before 12:00 AM to avoid lockout. (${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} IST)`
+                    });
+                    window.__lastReminderNotifyAt = nowMs;
+                }
+                return;
+            }
+
+            reminderOverlay.style.display = 'none';
+
+            if (isPostMidnight && pendingAtDeadline && !window.__midnightLockProcessing) {
+                window.__midnightLockProcessing = true;
+                try {
+                    await updateDoc(doc(db, 'teachers', teacherId), {
+                        isLocked: true,
+                        lockDate: todayKolkata
+                    });
+                } catch (error) {
+                    console.error('Midnight lock failed:', error);
+                } finally {
+                    window.__midnightLockProcessing = false;
+                }
+            }
+        });
+    }
+};
+
+// 2) Teacher marks leave for the day.
+window.markTeacherOnLeave = async function() {
+    const teacherId = localStorage.getItem('teacherId');
+    if (!teacherId) return;
+
+    if (!confirm('Are you on leave today? This will prevent account lockout at midnight.')) return;
+
+    try {
+        await updateDoc(doc(db, 'teachers', teacherId), {
+            isOnLeave: true,
+            hasSubmittedToday: false
+        });
+        const reminderOverlay = document.getElementById('statusOverlay');
+        if (reminderOverlay) reminderOverlay.style.display = 'none';
+        alert('Status: On Leave. Overlay hidden.');
+    } catch (error) {
+        console.error('Error marking leave:', error);
+        alert('Error updating leave status. Please try again.');
+    }
+};
+
+// 3) Midnight lockout cycle (trigger from admin page).
+window.syncAccountabilityCycle = async function() {
+    const { hour } = getKolkataTimeParts();
+    if (hour !== 0) {
+        console.log('Accountability cycle skipped: lockout is allowed only after 12:00 AM IST.');
+        return;
+    }
+
+    const today = getKolkataDateISO();
+    const settingsRef = doc(db, 'settings', 'cycle_config');
+    const settingsDoc = await getDoc(settingsRef);
+
+    if (!settingsDoc.exists() || settingsDoc.data().lastResetDate !== today) {
+        const batch = writeBatch(db);
+        const teachersSnap = await getDocs(collection(db, 'teachers'));
+
+        teachersSnap.forEach((tDoc) => {
+            const data = tDoc.data() || {};
+            const shouldLock = !data.hasSubmittedToday && !data.isOnLeave;
+
+            batch.update(tDoc.ref, {
+                isLocked: shouldLock,
+                lockDate: shouldLock ? today : null,
+                hasSubmittedToday: false,
+                isOnLeave: false
+            });
+        });
+
+        batch.set(settingsRef, { lastResetDate: today }, { merge: true });
+        await batch.commit();
+        console.log('Midnight Accountability Cycle Processed.');
+    }
+};
+
+// 4) Admin unlock a teacher.
+window.unlockTeacher = async function(id) {
+    await updateDoc(doc(db, 'teachers', id), {
+        isLocked: false,
+        lockDate: null,
+        hasSubmittedToday: false,
+        isOnLeave: false
+    });
+    alert('Teacher unlocked. They can now log in.');
+};
+
+window.loadAccountabilityTracker = function() {
+    const absentListDiv = document.getElementById('absent-list');
+    if (!absentListDiv) return;
+
+    const dateLabel = document.getElementById('accountabilityDateLabel');
+    if (dateLabel) {
+        dateLabel.textContent = formatKolkataReadableDate();
+    }
+
+    if (accountabilityTrackerUnsubscribe) {
+        accountabilityTrackerUnsubscribe();
+        accountabilityTrackerUnsubscribe = null;
+    }
+
+    const q = query(
+        collection(db, 'teachers'),
+        where('status', '==', 'active'),
+        where('hasSubmittedToday', '==', false)
+    );
+
+    absentListDiv.innerHTML = '<div class="loading-spinner">Checking database...</div>';
+
+    accountabilityTrackerUnsubscribe = onSnapshot(q, (snapshot) => {
+        absentListDiv.innerHTML = '';
+
+        const { hour } = getKolkataTimeParts();
+        const isPreMidnight = hour >= 1 && hour <= 23;
+
+        if (snapshot.empty) {
+            absentListDiv.innerHTML = "<p class='status-success'>All teachers are up to date.</p>";
+            return;
+        }
+
+        snapshot.forEach((docSnap) => {
+            const teacher = docSnap.data() || {};
+            const teacherId = docSnap.id;
+            const isLocked = teacher.isLocked || false;
+
+            if (isPreMidnight && isLocked && !bulkUnlockInProgress) {
+                bulkUnlockInProgress = true;
+                updateDoc(doc(db, 'teachers', teacherId), {
+                    isLocked: false,
+                    lockDate: null
+                }).finally(() => {
+                    bulkUnlockInProgress = false;
+                });
+            }
+
+            const row = document.createElement('div');
+            row.className = 'teacher-status-row';
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'teacher-info';
+
+            const nameEl = document.createElement('strong');
+            nameEl.textContent = teacher.name || 'Unnamed Teacher';
+            infoDiv.appendChild(nameEl);
+
+            const badge = document.createElement('span');
+            const effectiveLocked = isLocked && !isPreMidnight;
+            badge.className = effectiveLocked ? 'badge-locked' : 'badge-pending';
+            badge.textContent = effectiveLocked ? 'LOCKED' : 'PENDING';
+            infoDiv.appendChild(badge);
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'teacher-actions';
+
+            const btn = document.createElement('button');
+            btn.className = 'btn-restore';
+            btn.type = 'button';
+            btn.textContent = effectiveLocked ? 'Unlock and Continue' : 'Mark as Excused';
+            btn.onclick = () => window.restoreTeacherAccess(teacherId);
+            actionsDiv.appendChild(btn);
+
+            row.appendChild(infoDiv);
+            row.appendChild(actionsDiv);
+            absentListDiv.appendChild(row);
+        });
+    }, (error) => {
+        console.error('Accountability tracker error:', error);
+        absentListDiv.innerHTML = "<p style='color:#c62828;'>Unable to load accountability monitor right now.</p>";
+    });
+};
+
+window.restoreTeacherAccess = async function(tId) {
+    function showToast(message) {
+        const container = document.getElementById('toast-container');
+        if (!container) {
+            alert(message);
+            return;
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'premium-toast';
+        toast.innerHTML = `
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            </svg>
+            <span>${message}</span>
+        `;
+
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.remove();
+        }, 4000);
+    }
+
+    try {
+        const teacherRef = doc(db, 'teachers', tId);
+        await updateDoc(teacherRef, {
+            isLocked: false,
+            lockDate: null,
+            hasSubmittedToday: true,
+            unlockedByAdmin: true,
+            lastUnlockedAt: serverTimestamp(),
+            isOnLeave: false,
+            lastAdminUnlockAt: serverTimestamp()
+        });
+        showToast('Access restored for teacher successfully.');
+    } catch (e) {
+        console.error('Error unlocking:', e);
+        showToast('Error: Could not restore access.');
+    }
+};
+
+// 5) One-time safe initialization for all teachers.
+window.initializeTeacherAccountability = async function() {
+    try {
+        const teachersRef = collection(db, 'teachers');
+        const snapshot = await getDocs(teachersRef);
+
+        if (snapshot.empty) {
+            alert('No teachers found to initialize.');
+            return;
+        }
+
+        const batch = writeBatch(db);
+        let count = 0;
+
+        snapshot.forEach((teacherDoc) => {
+            batch.update(doc(db, 'teachers', teacherDoc.id), {
+                hasSubmittedToday: true,
+                isLocked: false,
+                isOnLeave: false
+            });
+            count += 1;
+        });
+
+        await batch.commit();
+        alert(`Successfully initialized ${count} teachers for the Accountability System.`);
+    } catch (error) {
+        console.error('Initialization failed:', error);
+        alert('Error initializing teachers. Check console.');
+    }
+};
 
 // ...existing code...
 
@@ -246,6 +706,33 @@ window.login = async function() {
 
             const teacherDoc = snapshot.docs[0];
             const teacherData = teacherDoc.data();
+            const { hour } = getKolkataTimeParts();
+            const isPreMidnight = hour >= 1 && hour <= 23;
+
+            if (teacherData.isLocked) {
+                const todayKolkata = getKolkataDateISO();
+                const lockDate = teacherData.lockDate || null;
+
+                if (isPreMidnight) {
+                    await updateDoc(doc(db, "teachers", teacherDoc.id), {
+                        isLocked: false,
+                        lockDate: null
+                    });
+                } else if (lockDate && lockDate === todayKolkata) {
+                    alert("🚫 ACCESS DENIED\n\nYou did not fill your class data before 12:00 AM. Please contact admin to unlock your account.");
+                    return;
+                } else {
+                    await updateDoc(doc(db, "teachers", teacherDoc.id), {
+                        isLocked: false,
+                        lockDate: null
+                    });
+                }
+
+                const freshTeacherDoc = await getDoc(doc(db, "teachers", teacherDoc.id));
+                if (freshTeacherDoc.exists()) {
+                    Object.assign(teacherData, freshTeacherDoc.data());
+                }
+            }
             
             console.log("Teacher found:", teacherData);
             console.log("Teacher ID:", teacherDoc.id);
@@ -1015,6 +1502,15 @@ window.saveEntry = async function(event) {
             console.log("Creating new entry...");
             entryData.createdAt = Timestamp.now();
             await addDoc(collection(db, "entries"), entryData);
+
+            if (role === "teacher" && teacherId) {
+                await updateDoc(doc(db, "teachers", teacherId), {
+                    hasSubmittedToday: true,
+                    isOnLeave: false,
+                    lastSubmissionDate: getKolkataDateISO()
+                });
+            }
+
             console.log("Entry saved to Firestore!");
             alert("✅ Entry saved successfully!");
         }
@@ -2440,6 +2936,9 @@ window.showTab = function(tabName) {
     // Load data based on tab
     if (tabName === 'teachers') {
         filterTeachers();
+        if (typeof window.loadAccountabilityTracker === 'function') {
+            window.loadAccountabilityTracker();
+        }
     } else if (tabName === 'students') {
         filterStudents();
     } else if (tabName === 'entries') {
@@ -2590,8 +3089,12 @@ if (window.location.pathname.includes('admin.html')) {
         if (localStorage.getItem("role") === "admin") {
             if (loginSection) loginSection.style.display = "none";
             if (dashboardSection) dashboardSection.style.display = "block";
+            syncAccountabilityCycle().catch(err => console.error('Accountability sync failed:', err));
             initializeData();
             filterTeachers();
+            if (typeof window.loadAccountabilityTracker === 'function') {
+                window.loadAccountabilityTracker();
+            }
         } else {
             if (loginSection) loginSection.style.display = "flex";
             if (dashboardSection) dashboardSection.style.display = "none";
@@ -2666,8 +3169,12 @@ if (window.location.pathname.includes('admin.html')) {
 
                     if (loginSection) loginSection.style.display = "none";
                     if (dashboardSection) dashboardSection.style.display = "block";
+                    syncAccountabilityCycle().catch(err => console.error('Accountability sync failed:', err));
                     initializeData();
                     filterTeachers();
+                    if (typeof window.loadAccountabilityTracker === 'function') {
+                        window.loadAccountabilityTracker();
+                    }
                 } else {
                     if (errorMsg) errorMsg.textContent = result.message;
                     verifyOtpBtn.disabled = false;
@@ -2698,6 +3205,10 @@ if (window.location.pathname.includes('admin.html')) {
             localStorage.removeItem("adminLoginTime");
             if (loginSection) loginSection.style.display = "flex";
             if (dashboardSection) dashboardSection.style.display = "none";
+            if (accountabilityTrackerUnsubscribe) {
+                accountabilityTrackerUnsubscribe();
+                accountabilityTrackerUnsubscribe = null;
+            }
         });
         
         // Sort field and order change listeners
@@ -2760,6 +3271,56 @@ window.loadAllEntries = async function() {
     return results; // array of all entries
 };
 
+// Refresh a collection list and cache locally for offline fallback.
+window.updateLocalDataList = async function(collectionName) {
+    try {
+        const querySnapshot = await getDocs(collection(db, collectionName));
+        const dataList = [];
+
+        querySnapshot.forEach((docSnap) => {
+            dataList.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        localStorage.setItem(`list_${collectionName}`, JSON.stringify(dataList));
+        console.log(`${collectionName} List Updated!`);
+        return dataList;
+    } catch (error) {
+        console.error('Update failed:', error);
+        const cached = localStorage.getItem(`list_${collectionName}`);
+        return cached ? JSON.parse(cached) : [];
+    }
+};
+
+window.enableAlerts = async function() {
+    return window.setupNotifications();
+};
+
+window.startUpdateLoop = function(collectionNames = [], intervalMs = 5 * 60 * 1000) {
+    if (!Array.isArray(collectionNames) || collectionNames.length === 0) return;
+
+    const runUpdate = async () => {
+        for (const collectionName of collectionNames) {
+            await window.updateLocalDataList(collectionName);
+        }
+    };
+
+    runUpdate();
+
+    if (window.__updateLoopIntervalId) {
+        clearInterval(window.__updateLoopIntervalId);
+    }
+
+    window.__updateLoopIntervalId = setInterval(runUpdate, intervalMs);
+    window.addEventListener('online', runUpdate);
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!window.__appFeaturesInitialized) {
+        window.__appFeaturesInitialized = true;
+        initializeAppFeatures();
+    }
+});
+
 // ========== PAGE INITIALIZATION ==========
 
 // Teacher page initialization
@@ -2789,6 +3350,15 @@ if (window.location.pathname.includes('teacher.html')) {
         console.log("Authentication passed, loading data...");
         loadLists();
         loadRecentEntries();
+
+        if (role === 'teacher') {
+            runReminderEngine();
+            if (!window.__reminderIntervalId) {
+                window.__reminderIntervalId = setInterval(runReminderEngine, 60000);
+            }
+
+            window.startUpdateLoop(['students', 'entries', 'teachers']);
+        }
         
         // Setup form submission
         const form = document.getElementById("entryForm");
@@ -2798,6 +3368,18 @@ if (window.location.pathname.includes('teacher.html')) {
         } else {
             console.error("Entry form not found!");
         }
+    });
+}
+
+if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/public/')) {
+    document.addEventListener('DOMContentLoaded', function() {
+        window.startUpdateLoop(['teachers']);
+    });
+}
+
+if (window.location.pathname.includes('admin.html')) {
+    document.addEventListener('DOMContentLoaded', function() {
+        window.startUpdateLoop(['teachers', 'students', 'entries', 'doubt_sessions']);
     });
 }
 
@@ -10047,5 +10629,43 @@ window.closeSessionDetailModal = function() {
     if (modal) {
         modal.style.display = 'none';
         document.body.style.overflow = 'auto';
+    }
+};
+
+window.unlockAllBeforeMidnight = async function() {
+    const { hour } = getKolkataTimeParts();
+    if (hour === 0) {
+        alert('It is already 12 AM or later. Use individual unlock if needed.');
+        return;
+    }
+
+    try {
+        const lockedQuery = query(
+            collection(db, 'teachers'),
+            where('status', '==', 'active'),
+            where('isLocked', '==', true)
+        );
+        const snap = await getDocs(lockedQuery);
+
+        if (snap.empty) {
+            alert('No locked teachers found right now.');
+            return;
+        }
+
+        const batch = writeBatch(db);
+        snap.forEach((teacherDoc) => {
+            batch.update(teacherDoc.ref, {
+                isLocked: false,
+                lockDate: null,
+                unlockedByAdmin: true,
+                lastAdminUnlockAt: serverTimestamp()
+            });
+        });
+
+        await batch.commit();
+        alert(`Unlocked ${snap.size} teacher(s). They can continue till 12 AM.`);
+    } catch (error) {
+        console.error('Bulk unlock failed:', error);
+        alert('Failed to unlock all teachers. Please try again.');
     }
 };

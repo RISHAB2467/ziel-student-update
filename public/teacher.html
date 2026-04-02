@@ -3,6 +3,8 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Teacher Panel - Daily Activity Log</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#d4af37">
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -556,6 +558,107 @@
                 padding: 14px 20px;
             }
         }
+
+        /* Accountability Overlay Styles */
+        .accountability-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .accountability-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            border-top: 6px solid #d32f2f;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        .warning-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        .accountability-card h2 {
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-size: 22px;
+        }
+
+        .accountability-card p {
+            color: #546e7a;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .deadline-note {
+            background: #fff8f1;
+            padding: 12px;
+            border-radius: 8px;
+            color: #e65100;
+            margin-top: 20px;
+            font-size: 14px;
+            border: 1px dashed #ffb74d;
+        }
+
+        .accountability-actions {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn-fill-now {
+            background: linear-gradient(135deg, #1a73e8, #1557b0);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+
+        .btn-fill-now:hover {
+            transform: scale(1.02);
+        }
+
+        .btn-on-leave {
+            background: #f1f3f4;
+            color: #3c4043;
+            border: 1px solid #dadce0;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -570,6 +673,11 @@
         <div style="display: flex; gap: 12px;">
             <button class="logout-btn" onclick="logout()">Sign Out</button>
         </div>
+    </div>
+
+    <div class="alert-setup-card" style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #ff9800;">
+        <p style="font-size: 13px; color: #e65100; margin-bottom: 10px;"><strong>Enable Push Notifications</strong> to receive 10 PM data reminders and avoid lockouts.</p>
+        <button onclick="setupNotifications()" class="submit-btn" style="background: #ff9800;">Enable Alerts</button>
     </div>
 
     <!-- Tab Navigation -->
@@ -880,7 +988,7 @@
 </div>
 
 <!-- App Logic with Firestore -->
-<script type="module" src="app-firestore.js?v=135"></script>
+<script type="module" src="app-firestore.js?v=147"></script>
 
 <!-- Libraries for PDF and Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1150,6 +1258,52 @@
         // Update display and hidden value
         updateTimeDisplay(field);
     }
+
+    // Helper for the Accountability Overlay
+    window.closeOverlayAndFocus = function() {
+        const overlay = document.getElementById('statusOverlay');
+        if (overlay) overlay.style.display = 'none';
+
+        const form = document.getElementById('entryForm');
+        if (form) {
+            form.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        setTimeout(() => {
+            const firstField = document.getElementById('studentSearch');
+            if (firstField) firstField.focus();
+        }, 500);
+    };
+
+    // Initial check for reminder engine.
+    window.addEventListener('load', function() {
+        if (typeof window.runReminderEngine === 'function') {
+            window.runReminderEngine();
+            if (!window.__reminderIntervalId) {
+                window.__reminderIntervalId = setInterval(window.runReminderEngine, 60000);
+            }
+        }
+    });
 </script>
+
+<div id="statusOverlay" class="accountability-overlay" style="display:none;">
+    <div class="accountability-card">
+        <div class="warning-icon">⚠️</div>
+        <h2>Daily Update Required</h2>
+        <p>It is past 10:00 PM and your class data is still pending.</p>
+        <div class="deadline-note">
+            Failure to submit by <strong>12:00 AM</strong> will deny access until admin unlocks your account.
+        </div>
+
+        <div class="accountability-actions">
+            <button class="btn-fill-now" onclick="closeOverlayAndFocus()">
+                I'm Filling it Now
+            </button>
+            <button class="btn-on-leave" onclick="markTeacherOnLeave()">
+                I am on Leave
+            </button>
+        </div>
+    </div>
+</div>
 </body>
 </html>

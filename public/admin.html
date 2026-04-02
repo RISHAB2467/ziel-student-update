@@ -2,8 +2,10 @@
 <html>
 <head>
     <title>Admin Dashboard - ZIEL</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#d4af37">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
-    <link rel="stylesheet" href="styles.css?v=135">
+    <link rel="stylesheet" href="styles.css?v=138">
     <!-- EmailJS for FREE email OTP -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -616,6 +618,8 @@
 
 <body>
 
+<div id="toast-container" class="toast-container"></div>
+
 <div class="container">
     <h1>
         <div class="logo-container">
@@ -695,6 +699,19 @@
         <!-- SECTION 1: Manage Teachers -->
         <div id="teachers-tab" class="tab-content">
             <h2 style="background: linear-gradient(135deg, #90ee90, #7dd87d); color: white; padding: 16px 24px; border-radius: 8px; font-family: 'Roboto', sans-serif; font-weight: 600; font-size: 18px; box-shadow: 0 2px 6px rgba(144, 238, 144, 0.3); margin-bottom: 24px;">Teacher Management</h2>
+
+            <div class="admin-card premium-shadow" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h3>Accountability Monitor</h3>
+                    <p>Teachers who have not submitted data for <span id="accountabilityDateLabel">today</span></p>
+                    <div style="margin-top: 10px;">
+                        <button type="button" class="btn-restore" onclick="unlockAllBeforeMidnight()">Unlock All Now (Till 12 AM)</button>
+                    </div>
+                </div>
+                <div id="absent-list" class="admin-list-container">
+                    <div class="loading-spinner">Checking database...</div>
+                </div>
+            </div>
             
             <div class="filter-bar">
                 <input id="searchTeacher" type="text" placeholder="Search teachers..." oninput="filterTeachers()">
@@ -1222,7 +1239,7 @@
     </div>
 
     <!-- App Logic with Firestore -->
-    <script type="module" src="app-firestore.js?v=135"></script><!-- Safe binding for View Detail button: avoid ReferenceError if module hasn't defined the function yet -->
+    <script type="module" src="app-firestore.js?v=147"></script><!-- Safe binding for View Detail button: avoid ReferenceError if module hasn't defined the function yet -->
 <script>
     (function() {
         const btn = document.getElementById('btnViewTeacherDetail');
@@ -1260,7 +1277,7 @@
 
                 // Attempt dynamic import of the module as a last-resort
                 try {
-                    const mod = await import('./app-firestore.js?v=135');
+                    const mod = await import('./app-firestore.js?v=147');
                     // If module exports the function, call it
                     if (mod && typeof mod.loadTeacherDetailReport === 'function') {
                         try { await mod.loadTeacherDetailReport(); return; } catch(e) { console.error('Error calling exported loadTeacherDetailReport', e); }
@@ -1287,6 +1304,19 @@
                 window.checkAutoDownloadAdmin();
             }
         }, 2000);
-</script>
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => {
+                        console.log('ZIEL PWA Registered!');
+                        reg.update();
+                    })
+                    .catch(err => console.error('PWA registration failed:', err));
+            });
+        }
+    </script>
 </body>
 </html>
