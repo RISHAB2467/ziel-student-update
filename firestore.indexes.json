@@ -48,6 +48,15 @@
   // ]
   "indexes": [
     {
+      "collectionGroup": "teachers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "hasSubmittedToday", "order": "ASCENDING" },
+        { "fieldPath": "isOnLeave", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "doubt_sessions",
       "queryScope": "COLLECTION",
       "fields": [

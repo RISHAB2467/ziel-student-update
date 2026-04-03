@@ -36,6 +36,8 @@ const db = initializeFirestore(app, {
 });
 
 const VAPID_KEY = 'BNztvlb9Gjr0qGVEP21EwmBPEv3e4BP0HsfMMGqeOORTaoPIotw7RzySfd6WQ6qdL-loZga8zKFdGRf6sDPTL7o';
+const APP_FIRESTORE_VERSION = '154';
+window.__APP_FIRESTORE_VERSION = APP_FIRESTORE_VERSION;
 
 let messaging = null;
 let messagingRegistration = null;
@@ -45,16 +47,36 @@ try {
     console.warn('Firebase Messaging unavailable in this browser context.', error);
 }
 
+async function showAppNotification(title, options = {}) {
+    if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
+        return false;
+    }
+
+    const payload = {
+        icon: '/icon-192.png',
+        ...options
+    };
+
+    try {
+        const registration = messagingRegistration || await navigator.serviceWorker.ready;
+        await registration.showNotification(title, payload);
+        return true;
+    } catch (error) {
+        console.error('Service worker notification failed:', error);
+        return false;
+    }
+}
+
 // ========== PWA & NOTIFICATION INITIALIZATION ==========
 
 async function initializeAppFeatures() {
     if (!('serviceWorker' in navigator)) return;
 
     try {
-        messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=2');
         console.log('Messaging Service Worker registered with scope:', messagingRegistration.scope);
 
-        await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.register('/sw.js?v=11');
     } catch (error) {
         console.error('Service Worker registration failed:', error);
     }
@@ -93,12 +115,12 @@ window.setupNotifications = async function() {
             return;
         }
 
-        if (!messagingRegistration && 'serviceWorker' in navigator) {
-            messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        }
+        // Always use the active service worker registration for mobile browser compatibility.
+        const registration = await navigator.serviceWorker.ready;
+        messagingRegistration = registration;
 
         const token = await getToken(messaging, {
-            serviceWorkerRegistration: messagingRegistration,
+            serviceWorkerRegistration: registration,
             vapidKey: VAPID_KEY
         });
 
@@ -117,12 +139,6 @@ window.setupNotifications = async function() {
                 lastTokenUpdate: serverTimestamp()
             });
             console.log('Device Token saved to Firestore');
-            if (Notification.permission === 'granted') {
-                new Notification('ZIEL Alerts Enabled', {
-                    body: 'You will now receive reminder notifications.',
-                    icon: '/icon-192.png'
-                });
-            }
             alert('Notifications enabled for ZIEL Classes!');
             return;
         }
@@ -130,22 +146,17 @@ window.setupNotifications = async function() {
         alert('Notifications enabled, but no teacher session found. Please login as teacher and enable again.');
     } catch (error) {
         console.error('Notification Setup Failed:', error);
-        alert(`Notification setup failed: ${error?.message || 'Unknown error'}`);
+        alert(`Notification setup failed (v${APP_FIRESTORE_VERSION}): ${error?.message || 'Unknown error'}`);
     }
 };
 
 if (messaging) {
-    onMessage(messaging, (payload) => {
+    onMessage(messaging, async (payload) => {
         console.log('Message received in foreground:', payload);
         const title = payload?.notification?.title || 'ZIEL Classes Alert';
         const body = payload?.notification?.body || 'Please check your dashboard.';
 
-        if (Notification.permission === 'granted') {
-            new Notification(title, {
-                body,
-                icon: '/icon-192.png'
-            });
-        }
+        await showAppNotification(title, { body });
 
         alert(`${title}\n${body}`);
     });
@@ -288,7 +299,7 @@ function verifyOTP(enteredOTP) {
 
 // ========== ACCOUNTABILITY FUNCTIONS ==========
 
-// 1) Teacher reminders between 10 PM and 12 AM Kolkata time.
+// 1) Teacher reminders for pending daily submissions.
 window.runReminderEngine = function() {
     const teacherId = localStorage.getItem('teacherId');
     const reminderOverlay = document.getElementById('statusOverlay');
@@ -302,9 +313,8 @@ window.runReminderEngine = function() {
             const isPreMidnight = hour >= 1 && hour <= 23;
             const isReminderWindow = hour >= 22 && hour <= 23;
             const isPostMidnight = hour === 0;
-            const yesterdayKolkata = getKolkataDateWithOffsetISO(-1);
-            const submittedYesterday = data.lastSubmissionDate === yesterdayKolkata;
-            const pendingAtDeadline = !data.hasSubmittedToday && !data.isOnLeave && !submittedYesterday;
+            const submittedToday = data.lastSubmissionDate === todayKolkata;
+            const pendingAtDeadline = !submittedToday && !data.isOnLeave;
             const lockDate = data.lockDate || null;
 
             if (data.isLocked) {
@@ -322,25 +332,33 @@ window.runReminderEngine = function() {
                     });
                     return;
                 }
-                alert('🚫 ACCESS DENIED\n\nYou did not fill your class data before 12:00 AM. Please contact admin.');
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.replace('index.html');
+                if (!window.__teacherLockAlertShown) {
+                    alert('🚫 ACCESS DENIED\n\nYou did not fill your class data before 12:00 AM. Please contact admin.');
+                    window.__teacherLockAlertShown = true;
+                }
                 return;
+            }
+
+            window.__teacherLockAlertShown = false;
+
+            // Send a reminder notification every 20 minutes for pending teachers.
+            if (pendingAtDeadline) {
+                const nowMs = Date.now();
+                const reminderIntervalMs = 20 * 60 * 1000;
+                const shouldNotify = !window.__lastReminderNotifyAt || (nowMs - window.__lastReminderNotifyAt >= reminderIntervalMs);
+                if (shouldNotify && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                    showAppNotification('Reminder: Fill Today\'s Class Data', {
+                        body: 'Your daily class data is pending. Please submit it to avoid lockout.'
+                    });
+                    window.__lastReminderNotifyAt = nowMs;
+                }
+            } else {
+                window.__lastReminderNotifyAt = null;
             }
 
             if (isReminderWindow && pendingAtDeadline) {
                 reminderOverlay.style.display = 'flex';
                 if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-
-                const nowMs = Date.now();
-                const shouldNotify = !window.__lastReminderNotifyAt || (nowMs - window.__lastReminderNotifyAt > 60000);
-                if (shouldNotify && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                    new Notification('Reminder: Fill Today\'s Class Data', {
-                        body: `Pending update. Submit before 12:00 AM to avoid lockout. (${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} IST)`
-                    });
-                    window.__lastReminderNotifyAt = nowMs;
-                }
                 return;
             }
 
@@ -382,6 +400,10 @@ window.markTeacherOnLeave = async function() {
         console.error('Error marking leave:', error);
         alert('Error updating leave status. Please try again.');
     }
+};
+
+window.markOnLeave = function() {
+    return window.markTeacherOnLeave();
 };
 
 // 3) Midnight lockout cycle (trigger from admin page).
@@ -446,7 +468,8 @@ window.loadAccountabilityTracker = function() {
     const q = query(
         collection(db, 'teachers'),
         where('status', '==', 'active'),
-        where('hasSubmittedToday', '==', false)
+        where('hasSubmittedToday', '==', false),
+        where('isOnLeave', '==', false)
     );
 
     absentListDiv.innerHTML = '<div class="loading-spinner">Checking database...</div>';
@@ -1422,7 +1445,7 @@ window.saveEntry = async function(event) {
     }
 
     // Get logged-in teacher info
-    const teacherName = localStorage.getItem("teacherName");
+    const teacherName = localStorage.getItem("teacherName") || localStorage.getItem("currentTeacherName");
     const role = localStorage.getItem("role");
 
     console.log("Saving entry - Teacher info:", { teacherName, role });
@@ -1460,8 +1483,8 @@ window.saveEntry = async function(event) {
                 teacherNameToStore = selectedTeacher;
                 const q = query(collection(db, "teachers"), where("name", "==", selectedTeacher));
                 const snapshot = await getDocs(q);
-                if (!snapshot.empty) {
-                    teacherId = snapshot.docs[0].id;
+                if (snapshot.empty) {
+                    absentListDiv.innerHTML = "<p class='status-success'>All active teachers have either submitted logs or are marked on leave.</p>";
                 }
             }
         }
@@ -3325,10 +3348,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Teacher page initialization
 if (window.location.pathname.includes('teacher.html')) {
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
         // Check if teacher is logged in
         const role = localStorage.getItem("role");
-        const teacherName = localStorage.getItem("teacherName") || localStorage.getItem("currentTeacherName");
+        let teacherName = localStorage.getItem("teacherName") || localStorage.getItem("currentTeacherName");
         const teacherId = localStorage.getItem("teacherId");
 
         console.log("Teacher page check:", { role, teacherName, teacherId });
@@ -3340,11 +3363,40 @@ if (window.location.pathname.includes('teacher.html')) {
             return;
         }
 
-        if (role === "teacher" && !teacherName) {
-            console.error("Teacher name missing:", teacherName);
-            alert("Teacher name not found. Please login again.");
-            window.location.href = "index.html";
-            return;
+        if (role === "teacher") {
+            if (!teacherId) {
+                console.error("Teacher ID missing for teacher role");
+                alert("Session data missing. Please login again.");
+                window.location.href = "index.html";
+                return;
+            }
+
+            if (!teacherName) {
+                try {
+                    const teacherDoc = await getDoc(doc(db, "teachers", teacherId));
+                    if (teacherDoc.exists()) {
+                        const recoveredName = teacherDoc.data()?.name;
+                        if (recoveredName) {
+                            teacherName = recoveredName;
+                            localStorage.setItem("teacherName", recoveredName);
+                            localStorage.setItem("currentTeacherName", recoveredName);
+                            const teacherInfoEl = document.getElementById("teacherInfo");
+                            if (teacherInfoEl) {
+                                teacherInfoEl.textContent = `Logged in as: ${recoveredName}`;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error("Failed to recover teacher name from Firestore:", error);
+                }
+
+                if (!teacherName) {
+                    console.error("Teacher name missing and could not be recovered");
+                    alert("Teacher session expired. Please login again.");
+                    window.location.href = "index.html";
+                    return;
+                }
+            }
         }
 
         console.log("Authentication passed, loading data...");
@@ -10668,4 +10720,28 @@ window.unlockAllBeforeMidnight = async function() {
         console.error('Bulk unlock failed:', error);
         alert('Failed to unlock all teachers. Please try again.');
     }
+};
+
+window.triggerTestReminder = async function() {
+    if (!('Notification' in window)) {
+        alert('This browser does not support notifications.');
+        return;
+    }
+
+    if (Notification.permission !== 'granted') {
+        alert('Please tap Enable Alerts first and allow notifications.');
+        return;
+    }
+
+    const shown = await showAppNotification('ZIEL Test Reminder', {
+        body: 'Test notification delivered successfully.',
+        tag: 'ziel-test-reminder'
+    });
+
+    if (!shown) {
+        alert('Test alert failed to display. Please re-enable alerts and try again.');
+        return;
+    }
+
+    alert('Test alert sent. Check your phone notification tray.');
 };

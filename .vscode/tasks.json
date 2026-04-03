@@ -215,6 +215,28 @@
 				"-A"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "git-commit-message",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Restore v135 cache/features and deploy-related updates"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-push-origin-main",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			],
+			"isBackground": false
 		}
 	]
 }

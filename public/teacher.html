@@ -677,7 +677,17 @@
 
     <div class="alert-setup-card" style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #ff9800;">
         <p style="font-size: 13px; color: #e65100; margin-bottom: 10px;"><strong>Enable Push Notifications</strong> to receive 10 PM data reminders and avoid lockouts.</p>
-        <button onclick="setupNotifications()" class="submit-btn" style="background: #ff9800;">Enable Alerts</button>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="setupNotifications()" class="submit-btn" style="background: #ff9800; flex: 1; min-width: 180px;">Enable Alerts</button>
+            <button onclick="triggerTestReminder()" class="submit-btn" style="background: #1e88e5; flex: 1; min-width: 180px;">Test Alert Now</button>
+        </div>
+    </div>
+
+    <div class="leave-section" style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 10px; text-align: center; border: 1px solid #e0e0e0;">
+        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Not taking any classes today?</p>
+        <button onclick="markOnLeave()" id="leaveBtn" class="btn-leave" style="background: #5f6368; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+            I am on Leave Today
+        </button>
     </div>
 
     <!-- Tab Navigation -->
@@ -988,7 +998,7 @@
 </div>
 
 <!-- App Logic with Firestore -->
-<script type="module" src="app-firestore.js?v=147"></script>
+<script type="module" src="app-firestore.js?v=154"></script>
 
 <!-- Libraries for PDF and Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1075,61 +1085,14 @@
 
 <!-- Session Timeout Management -->
 <script>
-    // Session timeout configuration
-    const SESSION_TIMEOUT = 98 * 60 * 60 * 1000; // 98 hours in milliseconds
-    let sessionTimer;
-    let lastActivityTime;
-
-    function checkSession() {
-        const role = localStorage.getItem('role');
-        if (role !== 'teacher') {
-            window.location.href = 'index.html';
-            return;
-        }
-
-        const currentTime = Date.now();
-        const timeSinceActivity = currentTime - lastActivityTime;
-
-        if (timeSinceActivity > SESSION_TIMEOUT) {
-            alert('Session expired due to inactivity. Please login again.');
-            logout();
-        }
-    }
-
-    function resetSessionTimer() {
-        lastActivityTime = Date.now();
-        localStorage.setItem('teacherLastActivity', lastActivityTime.toString());
-        
-        if (sessionTimer) {
-            clearTimeout(sessionTimer);
-        }
-        
-        sessionTimer = setTimeout(() => {
-            alert('Session expired due to inactivity. Please login again.');
-            logout();
-        }, SESSION_TIMEOUT);
-    }
-
-    // Initialize session
+    // Persistent teacher session: keep logged in until manual logout.
+    // This only blocks access when role is missing/invalid.
     window.addEventListener('load', function() {
         const role = localStorage.getItem('role');
         if (role !== 'teacher') {
             window.location.href = 'index.html';
             return;
         }
-
-        const storedActivity = localStorage.getItem('teacherLastActivity');
-        lastActivityTime = storedActivity ? parseInt(storedActivity) : Date.now();
-        
-        checkSession();
-        resetSessionTimer();
-        
-        const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-        activityEvents.forEach(event => {
-            document.addEventListener(event, resetSessionTimer);
-        });
-
-        setInterval(checkSession, 60000);
     });
 
     // Time picker variables

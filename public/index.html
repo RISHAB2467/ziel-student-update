@@ -335,12 +335,27 @@
     </div>
 </div>
 
+<script>
+    // Keep users logged in across app close/open in PWA.
+    (function restoreSessionRoute() {
+        const role = localStorage.getItem('role');
+        const teacherId = localStorage.getItem('teacherId');
+        if (role === 'teacher' && teacherId) {
+            window.location.replace('teacher.html');
+            return;
+        }
+        if (role === 'admin') {
+            window.location.replace('admin.html');
+        }
+    })();
+</script>
+
 <!-- App Logic with Firestore -->
-<script type="module" src="app-firestore.js?v=147"></script>
+<script type="module" src="app-firestore.js?v=154"></script>
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
+            navigator.serviceWorker.register('/sw.js?v=11')
                 .then(reg => {
                     console.log('ZIEL PWA Registered!');
                     reg.update();

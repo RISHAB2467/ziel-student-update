@@ -1,10 +1,30 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Temporary open access for development
-    // TODO: Implement Firebase Authentication and restore secure rules
+    // Teacher Collection Rules
+    match /teachers/{teacherId} {
+      // Anyone logged in can read teacher profiles
+      allow read: if request.auth != null;
+
+      // Teachers can only update specific fields, NEVER 'isLocked'
+      allow update: if request.auth != null &&
+        // Ensure they aren't trying to change the isLocked field
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isLocked'])) &&
+        // Ensure they are only updating their own document
+        (request.auth.uid == teacherId || resource.data.name == request.auth.token.name);
+
+      // Only Admins can create or delete
+      allow create, delete: if request.auth.token.admin == true;
+    }
+
+    // Rules for entries (keep authenticated access)
+    match /entries/{entryId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Default deny for everything else
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

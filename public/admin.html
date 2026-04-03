@@ -1239,7 +1239,7 @@
     </div>
 
     <!-- App Logic with Firestore -->
-    <script type="module" src="app-firestore.js?v=147"></script><!-- Safe binding for View Detail button: avoid ReferenceError if module hasn't defined the function yet -->
+    <script type="module" src="app-firestore.js?v=154"></script><!-- Safe binding for View Detail button: avoid ReferenceError if module hasn't defined the function yet -->
 <script>
     (function() {
         const btn = document.getElementById('btnViewTeacherDetail');
@@ -1277,7 +1277,7 @@
 
                 // Attempt dynamic import of the module as a last-resort
                 try {
-                    const mod = await import('./app-firestore.js?v=147');
+                    const mod = await import('./app-firestore.js?v=154');
                     // If module exports the function, call it
                     if (mod && typeof mod.loadTeacherDetailReport === 'function') {
                         try { await mod.loadTeacherDetailReport(); return; } catch(e) { console.error('Error calling exported loadTeacherDetailReport', e); }
@@ -1309,7 +1309,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                navigator.serviceWorker.register('/sw.js?v=11')
                     .then(reg => {
                         console.log('ZIEL PWA Registered!');
                         reg.update();
