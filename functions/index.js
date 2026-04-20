@@ -121,6 +121,8 @@ exports.midnightLockout = onSchedule({
 
       if (shouldLock) {
         lockedCount += 1;
+        // Log teacher who didn't submit - after 12 AM
+        console.log(`[MIDNIGHT LOCK] Teacher not submitted: ${data.name || 'Unknown'} (ID: ${teacherDoc.id}) on ${todayKolkata}`);
       }
 
       batch.update(teacherRef, {

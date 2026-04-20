@@ -457,6 +457,8 @@ window.runReminderEngine = function() {
                         isLocked: true,
                         lockDate: dueDate
                     });
+                    // Log teacher who didn't submit after midnight
+                    console.log(`[MIDNIGHT LOCK] Teacher locked: ${data.name || 'Unknown'} (ID: ${teacherId}) on ${dueDate}`);
                 } catch (error) {
                     console.error('Midnight lock failed:', error);
                 } finally {
