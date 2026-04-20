@@ -249,7 +249,11 @@ let isOTPSending = false; // Prevent duplicate sends
 const OTP_VALIDITY = 5 * 60 * 1000; // 5 minutes
 let reminderUnsubscribe = null;
 let accountabilityTrackerUnsubscribe = null;
+let allTeachersUnsubscribe = null;
+let allStudentsUnsubscribe = null;
 let bulkUnlockInProgress = false;
+let lastAdminDataUpdate = 0;
+const ADMIN_DATA_DEBOUNCE_MS = 300;
 
 // Get Kolkata date in YYYY-MM-DD format regardless of device timezone
 function getKolkataDateISO() {
@@ -580,39 +584,56 @@ window.loadAccountabilityTracker = async function() {
 
     await ensureAuthReady();
 
+    // ✅ FIX #2: Separate listeners instead of nested getDocs inside onSnapshot
+    const yesterday = getKolkataDateWithOffsetISO(-1);
+    let cachedSubmittedKeys = new Set();
+    
+    // Listener 1: Monitor submitted entries for yesterday
+    onSnapshot(
+        query(collection(db, 'entries'), where('date', '==', yesterday)),
+        (snapshot) => {
+            cachedSubmittedKeys = new Set();
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data() || {};
+                if (data.teacherId) cachedSubmittedKeys.add(`id:${String(data.teacherId)}`);
+                if (data.teacherName) cachedSubmittedKeys.add(`name:${String(data.teacherName).trim().toLowerCase()}`);
+            });
+            // Trigger UI update using cached data
+            updateAbsenceList();
+        }
+    );
+
+    // Listener 2: Monitor teachers data
     const q = query(
         collection(db, 'teachers'),
         where('status', '==', 'active')
     );
-
-    absentListDiv.innerHTML = '<div class="loading-spinner">Checking database...</div>';
-
     accountabilityTrackerUnsubscribe = onSnapshot(q, (snapshot) => {
-        (async () => {
-            absentListDiv.innerHTML = '';
+        // Trigger UI update using cached entries data
+        updateAbsenceList();
+    }, (error) => {
+        console.error('Accountability tracker error:', error);
+        absentListDiv.innerHTML = "<p style='color:#c62828;'>Unable to load accountability monitor right now.</p>";
+    });
 
-            const { hour } = getKolkataTimeParts();
-            const isPreMidnight = hour >= 1 && hour <= 23;
-            const yesterday = getKolkataDateWithOffsetISO(-1);
-            const submittedSnapshot = await getDocs(query(collection(db, 'entries'), where('date', '==', yesterday)));
-            const submittedTeacherKeys = new Set();
+    // Function to update absence list using cached data
+    async function updateAbsenceList() {
+        const absentTeachers = [];
+        
+        // Get all active teachers from current snapshot
+        const activeTeachersQuery = query(collection(db, 'teachers'), where('status', '==', 'active'));
+        const teachersSnapshot = await getDocs(activeTeachersQuery);
+        
+        const { hour } = getKolkataTimeParts();
+        const isPreMidnight = hour >= 1 && hour <= 23;
+        const submittedTeacherKeys = cachedSubmittedKeys;
 
-            submittedSnapshot.forEach((entryDoc) => {
-                const entryData = entryDoc.data() || {};
-                if (entryData.teacherId) {
-                    submittedTeacherKeys.add(`id:${String(entryData.teacherId)}`);
-                }
-                if (entryData.teacherName) {
-                    submittedTeacherKeys.add(`name:${String(entryData.teacherName).trim().toLowerCase()}`);
-                }
-            });
+        if (teachersSnapshot.empty) {
+            absentListDiv.innerHTML = "<p class='status-success'>No active teachers found.</p>";
+            return;
+        }
 
-            if (snapshot.empty) {
-                absentListDiv.innerHTML = "<p class='status-success'>No active teachers found.</p>";
-                return;
-            }
-
-            snapshot.forEach((docSnap) => {
+        teachersSnapshot.forEach((docSnap) => {
             const teacher = docSnap.data() || {};
             const teacherId = docSnap.id;
             const teacherKey = `id:${teacherId}`;
@@ -659,15 +680,8 @@ window.loadAccountabilityTracker = async function() {
             row.appendChild(infoDiv);
             row.appendChild(actionsDiv);
             absentListDiv.appendChild(row);
-            });
-        })().catch((error) => {
-            console.error('Accountability tracker render error:', error);
-            absentListDiv.innerHTML = "<p style='color:#c62828;'>Unable to load accountability monitor right now.</p>";
         });
-    }, (error) => {
-        console.error('Accountability tracker error:', error);
-        absentListDiv.innerHTML = "<p style='color:#c62828;'>Unable to load accountability monitor right now.</p>";
-    });
+    }
 };
 
 window.restoreTeacherAccess = async function(tId) {
@@ -1947,46 +1961,78 @@ function updateStats() {
     if (inactiveStudentsEl) inactiveStudentsEl.textContent = inactiveStudents;
 }
 
+// Debounced update for admin dashboard data
+function debouncedAdminDataUpdate() {
+    const now = Date.now();
+    if (now - lastAdminDataUpdate < ADMIN_DATA_DEBOUNCE_MS) return;
+    lastAdminDataUpdate = now;
+    
+    filterTeachers();
+    filterStudents();
+    updateStats();
+}
+
 // Initialize data and set up real-time listeners
 window.initializeData = async function() {
     await ensureAuthReady();
 
-    // Set up real-time listener for teachers
-    onSnapshot(collection(db, "teachers"), (snapshot) => {
+    // Unsubscribe from any existing listeners to prevent duplicates
+    if (allTeachersUnsubscribe) allTeachersUnsubscribe();
+    if (allStudentsUnsubscribe) allStudentsUnsubscribe();
+
+    // ✅ FIX #1: Filter to only active teachers (instead of all teachers)
+    const teachersQuery = query(collection(db, "teachers"), where('status', '==', 'active'));
+    allTeachersUnsubscribe = onSnapshot(teachersQuery, (snapshot) => {
         allTeachers = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
-        filterTeachers();
-        updateStats();
-
+        
         // Update teacher datalist for advanced search (admin.html)
         const datalist = document.getElementById('teachersDatalist');
         if (datalist) {
             datalist.innerHTML = '';
-            // Only show active teachers
-            allTeachers.filter(t => t.status === 'active').forEach(t => {
+            allTeachers.forEach(t => {
                 const opt = document.createElement('option');
                 opt.value = t.name;
                 datalist.appendChild(opt);
             });
         }
+        
+        debouncedAdminDataUpdate();
     }, (error) => {
         console.error('Teachers listener error:', error);
     });
 
-    // Set up real-time listener for students
-    onSnapshot(collection(db, "students"), (snapshot) => {
+    // ✅ FIX #1 + Safety Cap: Filter to active students with limit(50) to prevent read spike
+    const studentsQuery = query(
+        collection(db, "students"), 
+        where('status', '==', 'active'),
+        limit(50)
+    );
+    allStudentsUnsubscribe = onSnapshot(studentsQuery, (snapshot) => {
         allStudents = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
-        filterStudents();
-        updateStats();
+        debouncedAdminDataUpdate();
     }, (error) => {
         console.error('Students listener error:', error);
     });
-}
+};
+
+// ✅ FIX #4: Cleanup listeners on page unload
+window.cleanupAllListeners = function() {
+    console.log('[CLEANUP] Unsubscribing all real-time listeners...');
+    if (allTeachersUnsubscribe) allTeachersUnsubscribe();
+    if (allStudentsUnsubscribe) allStudentsUnsubscribe();
+    if (accountabilityTrackerUnsubscribe) accountabilityTrackerUnsubscribe();
+    if (reminderUnsubscribe) reminderUnsubscribe();
+};
+
+// Call cleanup on page unload
+window.addEventListener('beforeunload', cleanupAllListeners);
+window.addEventListener('unload', cleanupAllListeners);
 
 // Add teacher
 window.addTeacher = async function() {
