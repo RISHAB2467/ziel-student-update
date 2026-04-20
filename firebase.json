@@ -53,15 +53,24 @@
     ]
   },
   "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "functions": {
+      "port": 5001
+    },
     "firestore": {
-      "port": 8080
+      "port": 8081
     },
     "hosting": {
-      "port": 5000
+      "port": 5002
+    },
+    "pubsub": {
+      "port": 8085
     },
     "ui": {
       "enabled": true,
-      "port": 4000
+      "port": 4001
     }
   }
 }

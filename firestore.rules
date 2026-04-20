@@ -1,25 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Teacher Collection Rules
-    match /teachers/{teacherId} {
-      // Anyone logged in can read teacher profiles
-      allow read: if request.auth != null;
-
-      // Teachers can only update specific fields, NEVER 'isLocked'
-      allow update: if request.auth != null &&
-        // Ensure they aren't trying to change the isLocked field
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isLocked'])) &&
-        // Ensure they are only updating their own document
-        (request.auth.uid == teacherId || resource.data.name == request.auth.token.name);
-
-      // Only Admins can create or delete
-      allow create, delete: if request.auth.token.admin == true;
+    // This project currently uses app-level localStorage login (no Firebase Auth tokens).
+    // Keep access scoped to known app collections and deny unknown paths by default.
+    function isAppAllowed() {
+      return true;
     }
 
-    // Rules for entries (keep authenticated access)
+    // Teacher Collection Rules
+    match /teachers/{teacherId} {
+      allow read, write: if isAppAllowed();
+    }
+
+    // Student Collection Rules
+    match /students/{studentId} {
+      allow read, write: if isAppAllowed();
+
+      match /payments/{paymentId} {
+        allow read, write: if isAppAllowed();
+      }
+    }
+
+    // Rules for entries
     match /entries/{entryId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAppAllowed();
+    }
+
+    // Rules for doubt sessions
+    match /doubt_sessions/{sessionId} {
+      allow read, write: if isAppAllowed();
+    }
+
+    // Rules for settings used by app logic
+    match /settings/{settingId} {
+      allow read, write: if isAppAllowed();
     }
 
     // Default deny for everything else

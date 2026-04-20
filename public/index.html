@@ -351,11 +351,11 @@
 </script>
 
 <!-- App Logic with Firestore -->
-<script type="module" src="app-firestore.js?v=154"></script>
+<script type="module" src="app-firestore.js?v=164"></script>
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=11')
+            navigator.serviceWorker.register('/sw.js?v=14')
                 .then(reg => {
                     console.log('ZIEL PWA Registered!');
                     reg.update();

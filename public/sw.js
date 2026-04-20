@@ -1,10 +1,11 @@
-const CACHE_NAME = 'ziel-v12';
+const CACHE_NAME = 'ziel-v15';
 const ASSETS = [
     '/',
     '/index.html',
+    '/admin.html',
     '/teacher.html',
     '/styles.css',
-    '/app-firestore.js?v=149'
+    '/app-firestore.js?v=154'
 ];
 
 self.addEventListener('install', (e) => {
@@ -24,7 +25,33 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-    e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+    if (e.request.method !== 'GET') {
+        return;
+    }
+
+    e.respondWith((async () => {
+        const cachedResponse = await caches.match(e.request, { ignoreSearch: true });
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+
+        try {
+            return await fetch(e.request);
+        } catch (error) {
+            // Prevent unhandled promise rejections for navigation requests when offline/intermittent network.
+            if (e.request.mode === 'navigate') {
+                const fallback = await caches.match('/index.html');
+                if (fallback) {
+                    return fallback;
+                }
+            }
+
+            return new Response('Network error while offline.', {
+                status: 503,
+                statusText: 'Service Unavailable'
+            });
+        }
+    })());
 });
 
 self.addEventListener('notificationclick', (event) => {

@@ -1,6 +1,6 @@
 // Import Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, connectFirestoreEmulator, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -15,6 +15,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    connectFirestoreEmulator(db, '127.0.0.1', 8081);
+}
 
 // Admin credentials (hardcoded for admin)
 const adminCredentials = {

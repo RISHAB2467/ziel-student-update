@@ -1,6 +1,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { 
     initializeFirestore,
+    connectFirestoreEmulator,
     collection, 
     addDoc, 
     getDocs, 
@@ -17,6 +18,8 @@ import {
     serverTimestamp,
     writeBatch
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAuth, connectAuthEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getFunctions, connectFunctionsEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
 import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
 // Initialize Firebase
@@ -35,8 +38,22 @@ const db = initializeFirestore(app, {
     useFetchStreams: false
 });
 
+const auth = getAuth(app);
+const functions = getFunctions(app);
+
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    connectFirestoreEmulator(db, '127.0.0.1', 8081);
+    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+}
+
+async function ensureAuthReady() {
+    // This app intentionally uses localStorage-based role login, not Firebase Auth login.
+    return;
+}
+
 const VAPID_KEY = 'BNztvlb9Gjr0qGVEP21EwmBPEv3e4BP0HsfMMGqeOORTaoPIotw7RzySfd6WQ6qdL-loZga8zKFdGRf6sDPTL7o';
-const APP_FIRESTORE_VERSION = '154';
+const APP_FIRESTORE_VERSION = '164';
 window.__APP_FIRESTORE_VERSION = APP_FIRESTORE_VERSION;
 
 let messaging = null;
@@ -73,10 +90,19 @@ async function initializeAppFeatures() {
     if (!('serviceWorker' in navigator)) return;
 
     try {
-        messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=2');
-        console.log('Messaging Service Worker registered with scope:', messagingRegistration.scope);
+        // In a PWA, only one worker controls a scope. Remove legacy sw.js workers
+        // so messaging background notifications are handled by firebase-messaging-sw.js.
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+            const scriptUrl = reg.active?.scriptURL || reg.waiting?.scriptURL || reg.installing?.scriptURL || '';
+            if (scriptUrl.includes('/sw.js') && !scriptUrl.includes('/firebase-messaging-sw.js')) {
+                await reg.unregister();
+            }
+        }
 
-        await navigator.serviceWorker.register('/sw.js?v=11');
+        messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        await messagingRegistration.update();
+        console.log('Messaging Service Worker registered with scope:', messagingRegistration.scope);
     } catch (error) {
         console.error('Service Worker registration failed:', error);
     }
@@ -149,6 +175,37 @@ window.setupNotifications = async function() {
         alert(`Notification setup failed (v${APP_FIRESTORE_VERSION}): ${error?.message || 'Unknown error'}`);
     }
 };
+
+async function syncNotificationTokenSilently() {
+    if (typeof window === 'undefined' || !window.isSecureContext) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!('serviceWorker' in navigator)) return;
+    if (!messaging) return;
+
+    const role = localStorage.getItem('role');
+    const teacherId = localStorage.getItem('teacherId');
+    if (role !== 'teacher' || !teacherId) return;
+
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        messagingRegistration = registration;
+
+        const token = await getToken(messaging, {
+            serviceWorkerRegistration: registration,
+            vapidKey: VAPID_KEY,
+        });
+
+        if (!token) return;
+
+        await updateDoc(doc(db, 'teachers', teacherId), {
+            deviceToken: token,
+            notificationsEnabled: true,
+            lastTokenUpdate: serverTimestamp(),
+        });
+    } catch (error) {
+        console.warn('Silent notification token sync failed:', error);
+    }
+}
 
 if (messaging) {
     onMessage(messaging, async (payload) => {
@@ -234,6 +291,23 @@ function formatKolkataReadableDate() {
     }).format(new Date());
 }
 
+async function getSubmittedTeacherKeysForDate(targetDate) {
+    const snapshot = await getDocs(query(collection(db, 'entries'), where('date', '==', targetDate)));
+    const submittedKeys = new Set();
+
+    snapshot.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        if (data.teacherId) {
+            submittedKeys.add(`id:${String(data.teacherId)}`);
+        }
+        if (data.teacherName) {
+            submittedKeys.add(`name:${String(data.teacherName).trim().toLowerCase()}`);
+        }
+    });
+
+    return submittedKeys;
+}
+
 // Generate 6-digit OTP
 function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -305,41 +379,53 @@ window.runReminderEngine = function() {
     const reminderOverlay = document.getElementById('statusOverlay');
     if (!teacherId || !reminderOverlay) return;
 
-    if (!reminderUnsubscribe) {
+    const attachReminderListener = async () => {
+        await ensureAuthReady();
         reminderUnsubscribe = onSnapshot(doc(db, 'teachers', teacherId), async (docSnap) => {
             const data = docSnap.data() || {};
-            const { hour, minute } = getKolkataTimeParts();
+            const { hour } = getKolkataTimeParts();
             const todayKolkata = getKolkataDateISO();
-            const isPreMidnight = hour >= 1 && hour <= 23;
+            const dueDate = hour === 0 ? getKolkataDateWithOffsetISO(-1) : todayKolkata;
+            const submittedDueDateKeys = await getSubmittedTeacherKeysForDate(dueDate);
+            const teacherKey = `id:${teacherId}`;
+            const teacherNameKey = data.name ? `name:${String(data.name).trim().toLowerCase()}` : null;
+            const submittedDueDate = submittedDueDateKeys.has(teacherKey) || (teacherNameKey ? submittedDueDateKeys.has(teacherNameKey) : false);
             const isReminderWindow = hour >= 22 && hour <= 23;
             const isPostMidnight = hour === 0;
-            const submittedToday = data.lastSubmissionDate === todayKolkata;
-            const pendingAtDeadline = !submittedToday && !data.isOnLeave;
-            const lockDate = data.lockDate || null;
+            const pendingAtDeadline = !submittedDueDate && !data.isOnLeave;
 
             if (data.isLocked) {
-                if (isPreMidnight) {
-                    await updateDoc(doc(db, 'teachers', teacherId), {
-                        isLocked: false,
-                        lockDate: null
-                    });
-                    return;
+                reminderOverlay.style.display = 'none';
+
+                if (!window.__teacherForcedLockoutInProgress) {
+                    window.__teacherForcedLockoutInProgress = true;
+
+                    alert('🚫 ACCESS DENIED\n\nYour account is locked. Please contact admin.');
+
+                    try {
+                        if (typeof reminderUnsubscribe === 'function') {
+                            reminderUnsubscribe();
+                            reminderUnsubscribe = null;
+                        }
+                    } catch (unsubscribeError) {
+                        console.error('Failed to detach reminder listener during forced lockout:', unsubscribeError);
+                    }
+
+                    localStorage.removeItem('role');
+                    localStorage.removeItem('teacherName');
+                    localStorage.removeItem('currentTeacherName');
+                    localStorage.removeItem('teacherId');
+                    localStorage.removeItem('teacherEmploymentType');
+                    localStorage.removeItem('teacherLoginTime');
+                    localStorage.removeItem('teacherLastActivity');
+
+                    window.location.href = 'index.html';
                 }
-                if (lockDate && lockDate !== todayKolkata) {
-                    await updateDoc(doc(db, 'teachers', teacherId), {
-                        isLocked: false,
-                        lockDate: null
-                    });
-                    return;
-                }
-                if (!window.__teacherLockAlertShown) {
-                    alert('🚫 ACCESS DENIED\n\nYou did not fill your class data before 12:00 AM. Please contact admin.');
-                    window.__teacherLockAlertShown = true;
-                }
+
                 return;
             }
 
-            window.__teacherLockAlertShown = false;
+            window.__teacherForcedLockoutInProgress = false;
 
             // Send a reminder notification every 20 minutes for pending teachers.
             if (pendingAtDeadline) {
@@ -369,7 +455,7 @@ window.runReminderEngine = function() {
                 try {
                     await updateDoc(doc(db, 'teachers', teacherId), {
                         isLocked: true,
-                        lockDate: todayKolkata
+                        lockDate: dueDate
                     });
                 } catch (error) {
                     console.error('Midnight lock failed:', error);
@@ -377,6 +463,15 @@ window.runReminderEngine = function() {
                     window.__midnightLockProcessing = false;
                 }
             }
+        }, (error) => {
+            console.error('Reminder listener error:', error);
+            reminderOverlay.style.display = 'none';
+        });
+    };
+
+    if (!reminderUnsubscribe) {
+        attachReminderListener().catch((error) => {
+            console.error('Failed to initialize reminder listener:', error);
         });
     }
 };
@@ -415,16 +510,32 @@ window.syncAccountabilityCycle = async function() {
     }
 
     const today = getKolkataDateISO();
+    const yesterday = getKolkataDateWithOffsetISO(-1);
     const settingsRef = doc(db, 'settings', 'cycle_config');
     const settingsDoc = await getDoc(settingsRef);
 
     if (!settingsDoc.exists() || settingsDoc.data().lastResetDate !== today) {
         const batch = writeBatch(db);
         const teachersSnap = await getDocs(collection(db, 'teachers'));
+        const submittedSnapshot = await getDocs(query(collection(db, 'entries'), where('date', '==', yesterday)));
+        const submittedTeacherKeys = new Set();
+
+        submittedSnapshot.forEach((entryDoc) => {
+            const entryData = entryDoc.data() || {};
+            if (entryData.teacherId) {
+                submittedTeacherKeys.add(`id:${String(entryData.teacherId)}`);
+            }
+            if (entryData.teacherName) {
+                submittedTeacherKeys.add(`name:${String(entryData.teacherName).trim().toLowerCase()}`);
+            }
+        });
 
         teachersSnap.forEach((tDoc) => {
             const data = tDoc.data() || {};
-            const shouldLock = !data.hasSubmittedToday && !data.isOnLeave;
+            const teacherKey = `id:${tDoc.id}`;
+            const teacherNameKey = data.name ? `name:${String(data.name).trim().toLowerCase()}` : null;
+            const submittedYesterday = submittedTeacherKeys.has(teacherKey) || (teacherNameKey ? submittedTeacherKeys.has(teacherNameKey) : false);
+            const shouldLock = !submittedYesterday && !data.isOnLeave;
 
             batch.update(tDoc.ref, {
                 isLocked: shouldLock,
@@ -451,7 +562,7 @@ window.unlockTeacher = async function(id) {
     alert('Teacher unlocked. They can now log in.');
 };
 
-window.loadAccountabilityTracker = function() {
+window.loadAccountabilityTracker = async function() {
     const absentListDiv = document.getElementById('absent-list');
     if (!absentListDiv) return;
 
@@ -465,29 +576,46 @@ window.loadAccountabilityTracker = function() {
         accountabilityTrackerUnsubscribe = null;
     }
 
+    await ensureAuthReady();
+
     const q = query(
         collection(db, 'teachers'),
-        where('status', '==', 'active'),
-        where('hasSubmittedToday', '==', false),
-        where('isOnLeave', '==', false)
+        where('status', '==', 'active')
     );
 
     absentListDiv.innerHTML = '<div class="loading-spinner">Checking database...</div>';
 
     accountabilityTrackerUnsubscribe = onSnapshot(q, (snapshot) => {
-        absentListDiv.innerHTML = '';
+        (async () => {
+            absentListDiv.innerHTML = '';
 
-        const { hour } = getKolkataTimeParts();
-        const isPreMidnight = hour >= 1 && hour <= 23;
+            const { hour } = getKolkataTimeParts();
+            const isPreMidnight = hour >= 1 && hour <= 23;
+            const yesterday = getKolkataDateWithOffsetISO(-1);
+            const submittedSnapshot = await getDocs(query(collection(db, 'entries'), where('date', '==', yesterday)));
+            const submittedTeacherKeys = new Set();
 
-        if (snapshot.empty) {
-            absentListDiv.innerHTML = "<p class='status-success'>All teachers are up to date.</p>";
-            return;
-        }
+            submittedSnapshot.forEach((entryDoc) => {
+                const entryData = entryDoc.data() || {};
+                if (entryData.teacherId) {
+                    submittedTeacherKeys.add(`id:${String(entryData.teacherId)}`);
+                }
+                if (entryData.teacherName) {
+                    submittedTeacherKeys.add(`name:${String(entryData.teacherName).trim().toLowerCase()}`);
+                }
+            });
 
-        snapshot.forEach((docSnap) => {
+            if (snapshot.empty) {
+                absentListDiv.innerHTML = "<p class='status-success'>No active teachers found.</p>";
+                return;
+            }
+
+            snapshot.forEach((docSnap) => {
             const teacher = docSnap.data() || {};
             const teacherId = docSnap.id;
+            const teacherKey = `id:${teacherId}`;
+            const teacherNameKey = teacher.name ? `name:${String(teacher.name).trim().toLowerCase()}` : null;
+            const submittedYesterday = submittedTeacherKeys.has(teacherKey) || (teacherNameKey ? submittedTeacherKeys.has(teacherNameKey) : false);
             const isLocked = teacher.isLocked || false;
 
             if (isPreMidnight && isLocked && !bulkUnlockInProgress) {
@@ -522,13 +650,17 @@ window.loadAccountabilityTracker = function() {
             const btn = document.createElement('button');
             btn.className = 'btn-restore';
             btn.type = 'button';
-            btn.textContent = effectiveLocked ? 'Unlock and Continue' : 'Mark as Excused';
+            btn.textContent = effectiveLocked ? 'Unlock and Continue' : (submittedYesterday ? 'Submitted' : 'Mark as Excused');
             btn.onclick = () => window.restoreTeacherAccess(teacherId);
             actionsDiv.appendChild(btn);
 
             row.appendChild(infoDiv);
             row.appendChild(actionsDiv);
             absentListDiv.appendChild(row);
+            });
+        })().catch((error) => {
+            console.error('Accountability tracker render error:', error);
+            absentListDiv.innerHTML = "<p style='color:#c62828;'>Unable to load accountability monitor right now.</p>";
         });
     }, (error) => {
         console.error('Accountability tracker error:', error);
@@ -1518,6 +1650,16 @@ window.saveEntry = async function(event) {
             console.log("Updating entry:", editingId);
             const docRef = doc(db, "entries", editingId);
             await updateDoc(docRef, entryData);
+
+            const currentKolkataDate = getKolkataDateISO();
+            await updateDoc(doc(db, "teachers", teacherId), {
+                hasSubmittedToday: date === currentKolkataDate,
+                isOnLeave: false,
+                isLocked: false,
+                lockDate: null,
+                lastSubmissionDate: date
+            });
+
             alert("✅ Entry updated successfully!");
             delete document.getElementById("entryForm").dataset.editingId;
         } else {
@@ -1526,11 +1668,13 @@ window.saveEntry = async function(event) {
             entryData.createdAt = Timestamp.now();
             await addDoc(collection(db, "entries"), entryData);
 
-            if (role === "teacher" && teacherId) {
+            if (teacherId) {
                 await updateDoc(doc(db, "teachers", teacherId), {
                     hasSubmittedToday: true,
                     isOnLeave: false,
-                    lastSubmissionDate: getKolkataDateISO()
+                    isLocked: false,
+                    lockDate: null,
+                    lastSubmissionDate: date || getKolkataDateISO()
                 });
             }
 
@@ -1803,6 +1947,8 @@ function updateStats() {
 
 // Initialize data and set up real-time listeners
 window.initializeData = async function() {
+    await ensureAuthReady();
+
     // Set up real-time listener for teachers
     onSnapshot(collection(db, "teachers"), (snapshot) => {
         allTeachers = snapshot.docs.map(doc => ({
@@ -1823,6 +1969,8 @@ window.initializeData = async function() {
                 datalist.appendChild(opt);
             });
         }
+    }, (error) => {
+        console.error('Teachers listener error:', error);
     });
 
     // Set up real-time listener for students
@@ -1833,6 +1981,8 @@ window.initializeData = async function() {
         }));
         filterStudents();
         updateStats();
+    }, (error) => {
+        console.error('Students listener error:', error);
     });
 }
 
@@ -3297,6 +3447,7 @@ window.loadAllEntries = async function() {
 // Refresh a collection list and cache locally for offline fallback.
 window.updateLocalDataList = async function(collectionName) {
     try {
+        await ensureAuthReady();
         const querySnapshot = await getDocs(collection(db, collectionName));
         const dataList = [];
 
@@ -3318,23 +3469,85 @@ window.enableAlerts = async function() {
     return window.setupNotifications();
 };
 
-window.startUpdateLoop = function(collectionNames = [], intervalMs = 5 * 60 * 1000) {
+window.startUpdateLoop = function(collectionNames = [], intervalMs = 30 * 60 * 1000, loopKey = 'default') {
     if (!Array.isArray(collectionNames) || collectionNames.length === 0) return;
 
+    if (!window.__updateLoops) {
+        window.__updateLoops = {};
+    }
+
+    const loop = {
+        key: loopKey,
+        collectionNames: [...collectionNames],
+        intervalMs,
+        intervalId: null,
+        run: null,
+    };
+
     const runUpdate = async () => {
+        if (document.visibilityState !== 'visible') {
+            return;
+        }
+
+        if (!navigator.onLine) {
+            return;
+        }
+
         for (const collectionName of collectionNames) {
             await window.updateLocalDataList(collectionName);
         }
     };
 
+    loop.run = runUpdate;
+    window.__updateLoops[loopKey] = loop;
+
     runUpdate();
 
-    if (window.__updateLoopIntervalId) {
-        clearInterval(window.__updateLoopIntervalId);
+    if (loop.intervalId) {
+        clearInterval(loop.intervalId);
     }
 
-    window.__updateLoopIntervalId = setInterval(runUpdate, intervalMs);
-    window.addEventListener('online', runUpdate);
+    loop.intervalId = setInterval(runUpdate, intervalMs);
+
+    if (!window.__updateLoopOnlineHandler) {
+        window.__updateLoopOnlineHandler = () => {
+            const loops = Object.values(window.__updateLoops || {});
+            loops.forEach((activeLoop) => {
+                if (typeof activeLoop.run === 'function') {
+                    activeLoop.run();
+                }
+            });
+        };
+        window.addEventListener('online', window.__updateLoopOnlineHandler);
+    }
+
+    if (!window.__updateLoopVisibilityHandler) {
+        window.__updateLoopVisibilityHandler = () => {
+            const loops = Object.values(window.__updateLoops || {});
+
+            if (document.visibilityState === 'visible') {
+                loops.forEach((activeLoop) => {
+                    if (activeLoop.intervalId) {
+                        clearInterval(activeLoop.intervalId);
+                    }
+
+                    if (typeof activeLoop.run === 'function') {
+                        activeLoop.run();
+                        activeLoop.intervalId = setInterval(activeLoop.run, activeLoop.intervalMs || (30 * 60 * 1000));
+                    }
+                });
+                return;
+            }
+
+            loops.forEach((activeLoop) => {
+                if (activeLoop.intervalId) {
+                    clearInterval(activeLoop.intervalId);
+                    activeLoop.intervalId = null;
+                }
+            });
+        };
+        document.addEventListener('visibilitychange', window.__updateLoopVisibilityHandler);
+    }
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -3404,12 +3617,13 @@ if (window.location.pathname.includes('teacher.html')) {
         loadRecentEntries();
 
         if (role === 'teacher') {
+            await syncNotificationTokenSilently();
             runReminderEngine();
             if (!window.__reminderIntervalId) {
                 window.__reminderIntervalId = setInterval(runReminderEngine, 60000);
             }
 
-            window.startUpdateLoop(['students', 'entries', 'teachers']);
+            window.startUpdateLoop(['students', 'entries', 'teachers'], 30 * 60 * 1000);
         }
         
         // Setup form submission
@@ -3425,13 +3639,16 @@ if (window.location.pathname.includes('teacher.html')) {
 
 if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/public/')) {
     document.addEventListener('DOMContentLoaded', function() {
-        window.startUpdateLoop(['teachers']);
+        window.startUpdateLoop(['teachers'], 30 * 60 * 1000, 'index-teachers');
     });
 }
 
 if (window.location.pathname.includes('admin.html')) {
     document.addEventListener('DOMContentLoaded', function() {
-        window.startUpdateLoop(['teachers', 'students', 'entries', 'doubt_sessions']);
+        // Admin needs faster visibility for fresh logs.
+        window.startUpdateLoop(['entries', 'doubt_sessions'], 5 * 60 * 1000, 'admin-fast');
+        // Less volatile data can stay on slower sync.
+        window.startUpdateLoop(['teachers', 'students'], 30 * 60 * 1000, 'admin-slow');
     });
 }
 
@@ -3457,6 +3674,7 @@ window.loadAdminEntries = async function() {
     if (!entriesList) return;
 
     try {
+        await ensureAuthReady();
         // Get all entries (no limit)
         const entriesSnapshot = await getDocs(collection(db, "entries"));
         
@@ -3882,44 +4100,176 @@ window.filterEntriesTable = function() {
     }
 };
 
+function ensureDynamicAdminEditModal() {
+    let modal = document.getElementById("editEntryModal");
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.id = 'editEntryModal';
+    modal.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:2500; align-items:center; justify-content:center; padding:16px;';
+    modal.innerHTML = `
+        <div style="width:min(860px, 100%); max-height:90vh; overflow:auto; background:#ffffff; border-radius:12px; box-shadow:0 16px 50px rgba(0,0,0,0.25); padding:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h3 style="margin:0; font-size:22px; color:#1f2937;">Edit Entry</h3>
+                <button type="button" id="editEntryCloseButton" style="border:none; background:#eef2ff; color:#1f2937; border-radius:8px; padding:8px 12px; cursor:pointer;">Close</button>
+            </div>
+            <form id="editEntryForm" style="display:grid; gap:12px;">
+                <input type="hidden" id="editEntryId" />
+                <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px;">
+                    <label style="display:grid; gap:5px;"><span>Teacher Name</span><input type="text" id="editEntryTeacher" list="editTeacherList" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                    <label style="display:grid; gap:5px;"><span>Student Name</span><input type="text" id="editEntryStudent" list="editStudentList" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                </div>
+                <datalist id="editTeacherList"></datalist>
+                <datalist id="editStudentList"></datalist>
+                <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px;">
+                    <label style="display:grid; gap:5px;"><span>Date</span><input type="date" id="editEntryDate" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                    <label style="display:grid; gap:5px;"><span>Time From</span><input type="time" id="editEntryTimeFrom" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                    <label style="display:grid; gap:5px;"><span>Time To</span><input type="time" id="editEntryTimeTo" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px;">
+                    <label style="display:grid; gap:5px;"><span>Class Count</span><input type="number" step="0.5" min="0.5" id="editEntryClasses" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                    <label style="display:grid; gap:5px;"><span>Subject</span><input type="text" id="editEntrySubject" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                    <label style="display:grid; gap:5px;"><span>Topic</span><input type="text" id="editEntryTopic" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                </div>
+                <label style="display:grid; gap:5px;"><span>Payment</span><input type="text" id="editEntryPayment" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px;">
+                    <fieldset style="border:1px solid #d1d5db; border-radius:8px; padding:10px;"><legend>Sheet Made</legend><label><input type="radio" name="editEntrySheetMade" value="yes" /> Yes</label><label style="margin-left:12px;"><input type="radio" name="editEntrySheetMade" value="no" /> No</label></fieldset>
+                    <fieldset style="border:1px solid #d1d5db; border-radius:8px; padding:10px;"><legend>Homework</legend><label><input type="radio" name="editEntryHomework" value="yes" /> Yes</label><label style="margin-left:12px;"><input type="radio" name="editEntryHomework" value="no" /> No</label></fieldset>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:4px;">
+                    <button type="button" onclick="closeEditEntryModal()" style="padding:10px 14px; border:1px solid #d1d5db; background:#fff; border-radius:8px; cursor:pointer;">Cancel</button>
+                    <button type="submit" style="padding:10px 14px; border:none; background:#1a73e8; color:#fff; border-radius:8px; cursor:pointer;">Save Entry</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeBtn = document.getElementById('editEntryCloseButton');
+    if (closeBtn) closeBtn.addEventListener('click', window.closeEditEntryModal);
+
+    const form = document.getElementById('editEntryForm');
+    if (form) form.addEventListener('submit', window.updateAdminEntry);
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) window.closeEditEntryModal();
+    });
+
+    return modal;
+}
+
+async function populateAdminEditNameLists() {
+    const teacherList = document.getElementById('editTeacherList');
+    const studentList = document.getElementById('editStudentList');
+    if (!teacherList || !studentList) return;
+
+    const [teacherSnap, studentSnap] = await Promise.all([
+        getDocs(query(collection(db, "teachers"), where("status", "==", "active"))),
+        getDocs(query(collection(db, "students"), where("status", "==", "active")))
+    ]);
+
+    teacherList.innerHTML = teacherSnap.docs
+        .map((docSnap) => `<option value="${(docSnap.data().name || '').replace(/"/g, '&quot;')}"></option>`)
+        .join('');
+
+    studentList.innerHTML = studentSnap.docs
+        .map((docSnap) => `<option value="${(docSnap.data().name || '').replace(/"/g, '&quot;')}"></option>`)
+        .join('');
+}
+
 // Admin edit entry - opens in modal or navigates to form
 // Admin edit entry - inline modal
 window.adminEditEntry = async function(docId) {
     try {
-        // Get the entry data
+        await ensureAuthReady();
         const entryDoc = await getDoc(doc(db, "entries", docId));
         if (!entryDoc.exists()) {
             alert("Entry not found!");
             return;
         }
-        
-        const entry = entryDoc.data();
-        
-        // Populate edit form
-        document.getElementById("editEntryId").value = docId;
-        document.getElementById("editEntryDate").value = entry.date || "";
-        document.getElementById("editEntryTeacher").value = entry.teacherName || "";
-        document.getElementById("editEntryStudent").value = entry.studentName || entry.student || "";
-        document.getElementById("editEntryClasses").value = entry.classCount || "";
-        document.getElementById("editEntryTimeFrom").value = entry.timeFrom || "";
-        document.getElementById("editEntryTimeTo").value = entry.timeTo || "";
-        document.getElementById("editEntrySubject").value = entry.subject || "";
-        document.getElementById("editEntryTopic").value = entry.topic || "";
-        document.getElementById("editEntryPayment").value = entry.payment || "";
-        
-        // Set radio buttons
-        const sheetMadeRadios = document.getElementsByName("editEntrySheetMade");
-        sheetMadeRadios.forEach(radio => {
-            radio.checked = radio.value === entry.sheetMade;
+
+        const entry = entryDoc.data() || {};
+        ensureAdminEntryModal();
+
+        try {
+            await window.openAddEntryModal();
+        } catch (openError) {
+            console.warn("openAddEntryModal failed during edit flow, retrying with dynamic modal:", openError);
+            ensureAdminEntryModal();
+        }
+
+        let adminForm = document.getElementById("adminEntryForm");
+        let teacherSelect = document.getElementById("adminEntryTeacher");
+        let studentSelect = document.getElementById("adminEntryStudent");
+
+        if (!adminForm || !teacherSelect || !studentSelect) {
+            // One retry after yielding to DOM in case of render timing issues.
+            await Promise.resolve();
+            adminForm = document.getElementById("adminEntryForm");
+            teacherSelect = document.getElementById("adminEntryTeacher");
+            studentSelect = document.getElementById("adminEntryStudent");
+        }
+
+        if (!adminForm || !teacherSelect || !studentSelect) {
+            alert("Edit form could not be initialized. Please refresh once and try again.");
+            return;
+        }
+
+        adminForm.dataset.editingId = docId;
+
+        const addModal = document.getElementById("addEntryModal");
+        const modalHeading = addModal ? addModal.querySelector('h2, h3') : null;
+        if (modalHeading) {
+            modalHeading.textContent = 'Edit Teacher Entry';
+        }
+
+        const submitBtn = adminForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = 'Save Changes';
+        }
+
+        document.getElementById("adminEntryDate").value = entry.date || "";
+        document.getElementById("adminEntryTimeFrom").value = entry.timeFrom || "";
+        document.getElementById("adminEntryTimeTo").value = entry.timeTo || "";
+        document.getElementById("adminEntryClasses").value = entry.classCount || "";
+        document.getElementById("adminEntrySubject").value = entry.subject || "";
+        document.getElementById("adminEntryTopic").value = entry.topic || "";
+
+        let teacherId = entry.teacherId || "";
+        if (!teacherId && entry.teacherName) {
+            const teacherSnap = await getDocs(query(collection(db, "teachers"), where("name", "==", entry.teacherName)));
+            if (!teacherSnap.empty) {
+                teacherId = teacherSnap.docs[0].id;
+            }
+        }
+        if (teacherId) {
+            teacherSelect.value = teacherId;
+        }
+
+        let studentId = entry.studentId || "";
+        const existingStudentName = entry.studentName || entry.student || "";
+        if (!studentId && existingStudentName) {
+            const studentSnap = await getDocs(query(collection(db, "students"), where("name", "==", existingStudentName)));
+            if (!studentSnap.empty) {
+                studentId = studentSnap.docs[0].id;
+            }
+        }
+        if (studentId) {
+            studentSelect.value = studentId;
+        }
+
+        const sheetVal = entry.sheetMade || "no";
+        const sheetRadios = document.getElementsByName("adminEntrySheetMade");
+        sheetRadios.forEach((radio) => {
+            radio.checked = radio.value === sheetVal;
         });
-        
-        const homeworkRadios = document.getElementsByName("editEntryHomework");
-        homeworkRadios.forEach(radio => {
-            radio.checked = radio.value === entry.homework;
+
+        const homeworkVal = entry.homeworkGiven || entry.homework || "no";
+        const hwRadios = document.getElementsByName("adminEntryHomework");
+        hwRadios.forEach((radio) => {
+            radio.checked = radio.value === homeworkVal;
         });
-        
-        // Show modal
-        document.getElementById("editEntryModal").style.display = "block";
     } catch (error) {
         console.error("Error loading entry for edit:", error);
         alert("Error loading entry. Check console.");
@@ -3943,16 +4293,50 @@ window.updateAdminEntry = async function(event) {
     }
     
     try {
+        await ensureAuthReady();
         const docId = document.getElementById("editEntryId").value;
+        const existingDoc = await getDoc(doc(db, "entries", docId));
+        if (!existingDoc.exists()) {
+            alert("Entry not found!");
+            return;
+        }
+        const existing = existingDoc.data() || {};
+
         const date = document.getElementById("editEntryDate").value;
         const classCount = parseFloat(document.getElementById("editEntryClasses").value);
         const timeFrom = document.getElementById("editEntryTimeFrom").value;
         const timeTo = document.getElementById("editEntryTimeTo").value;
-        const subject = document.getElementById("editEntrySubject").value;
-        const topic = document.getElementById("editEntryTopic").value;
-        const payment = document.getElementById("editEntryPayment").value.trim();
+        const subject = document.getElementById("editEntrySubject")?.value || "";
+        const topic = document.getElementById("editEntryTopic")?.value || "";
+        const payment = document.getElementById("editEntryPayment")?.value?.trim() || "";
+        const teacherNameInput = document.getElementById("editEntryTeacher")?.value?.trim();
+        const studentNameInput = document.getElementById("editEntryStudent")?.value?.trim();
         const sheetMade = document.querySelector('input[name="editEntrySheetMade"]:checked')?.value || "no";
         const homework = document.querySelector('input[name="editEntryHomework"]:checked')?.value || "no";
+
+        if (!date || Number.isNaN(classCount) || classCount <= 0 || !timeFrom || !timeTo) {
+            alert("Please fill valid date, class count, and time range.");
+            return;
+        }
+
+        let teacherName = teacherNameInput || existing.teacherName || "";
+        let teacherId = existing.teacherId || null;
+        if (teacherName && teacherName !== (existing.teacherName || "")) {
+            const teacherSnap = await getDocs(query(collection(db, "teachers"), where("name", "==", teacherName)));
+            if (!teacherSnap.empty) {
+                teacherId = teacherSnap.docs[0].id;
+            }
+        }
+
+        const existingStudentName = existing.studentName || existing.student || "";
+        let studentName = studentNameInput || existingStudentName;
+        let studentId = existing.studentId || null;
+        if (studentName && studentName !== existingStudentName) {
+            const studentSnap = await getDocs(query(collection(db, "students"), where("name", "==", studentName)));
+            if (!studentSnap.empty) {
+                studentId = studentSnap.docs[0].id;
+            }
+        }
         
         // Calculate day of week
         const dateObj = new Date(date + 'T00:00:00');
@@ -3960,6 +4344,10 @@ window.updateAdminEntry = async function(event) {
         
         // Prepare update data
         const updateData = {
+            teacherId,
+            teacherName,
+            studentId,
+            studentName,
             date,
             dayOfWeek,
             classCount,
@@ -3968,6 +4356,7 @@ window.updateAdminEntry = async function(event) {
             timeTo,
             topic,
             sheetMade,
+            homeworkGiven: homework,
             homework,
             payment: payment || "",
             updatedAt: Timestamp.now()
@@ -4019,10 +4408,72 @@ window.adminDeleteDoubtSession = async function(docId) {
     }
 };
 
+function ensureAdminEntryModal() {
+    let modal = document.getElementById("addEntryModal");
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.id = "addEntryModal";
+    modal.style.cssText = "display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:2400; align-items:center; justify-content:center; padding:16px;";
+    modal.innerHTML = `
+        <div style="width:min(860px, 100%); max-height:90vh; overflow:auto; background:#fff; border-radius:12px; box-shadow:0 16px 50px rgba(0,0,0,0.25); padding:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h3 style="margin:0; color:#1f2937; font-size:22px;">Add New Entry</h3>
+                <button type="button" id="closeAdminEntryModalBtn" style="border:none; background:#eef2ff; color:#1f2937; border-radius:8px; padding:8px 12px; cursor:pointer;">Close</button>
+            </div>
+
+            <form id="adminEntryForm" style="display:grid; gap:12px;">
+                <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px;">
+                    <label style="display:grid; gap:5px;"><span>Teacher</span><select id="adminEntryTeacher" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;"></select></label>
+                    <label style="display:grid; gap:5px;"><span>Student</span><select id="adminEntryStudent" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;"></select></label>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px;">
+                    <label style="display:grid; gap:5px;"><span>Date</span><input type="date" id="adminEntryDate" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                    <label style="display:grid; gap:5px;"><span>Time From</span><input type="time" id="adminEntryTimeFrom" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                    <label style="display:grid; gap:5px;"><span>Time To</span><input type="time" id="adminEntryTimeTo" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px;">
+                    <label style="display:grid; gap:5px;"><span>Class Count</span><input type="number" id="adminEntryClasses" step="0.5" min="0.5" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                    <label style="display:grid; gap:5px;"><span>Subject</span><input type="text" id="adminEntrySubject" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                    <label style="display:grid; gap:5px;"><span>Topic</span><input type="text" id="adminEntryTopic" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;" /></label>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px;">
+                    <fieldset style="border:1px solid #d1d5db; border-radius:8px; padding:10px;"><legend>Sheet Made</legend><label><input type="radio" name="adminEntrySheetMade" value="yes" /> Yes</label><label style="margin-left:12px;"><input type="radio" name="adminEntrySheetMade" value="no" checked /> No</label></fieldset>
+                    <fieldset style="border:1px solid #d1d5db; border-radius:8px; padding:10px;"><legend>Homework</legend><label><input type="radio" name="adminEntryHomework" value="yes" /> Yes</label><label style="margin-left:12px;"><input type="radio" name="adminEntryHomework" value="no" checked /> No</label></fieldset>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:4px;">
+                    <button type="button" onclick="closeAddEntryModal()" style="padding:10px 14px; border:1px solid #d1d5db; background:#fff; border-radius:8px; cursor:pointer;">Cancel</button>
+                    <button type="submit" style="padding:10px 14px; border:none; background:#1a73e8; color:#fff; border-radius:8px; cursor:pointer;">Save Entry</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeBtn = document.getElementById("closeAdminEntryModalBtn");
+    if (closeBtn) {
+        closeBtn.addEventListener("click", window.closeAddEntryModal);
+    }
+
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            window.closeAddEntryModal();
+        }
+    });
+
+    return modal;
+}
+
 // Open add entry modal
 window.openAddEntryModal = async function() {
-    const modal = document.getElementById("addEntryModal");
-    if (!modal) return;
+    const modal = ensureAdminEntryModal();
+
+    await ensureAuthReady();
     
     // Load active teachers
     const teachersQuery = query(collection(db, "teachers"), where("status", "==", "active"));
@@ -4063,10 +4514,15 @@ window.openAddEntryModal = async function() {
     const adminForm = document.getElementById("adminEntryForm");
     if (adminForm) {
         adminForm.reset();
+        delete adminForm.dataset.editingId;
         adminForm.onsubmit = saveAdminEntry;
+        const submitBtn = adminForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = 'Save Entry';
+        }
     }
 
-    modal.style.display = "block";
+    modal.style.display = "flex";
 };
 
 // Close add entry modal
@@ -4075,7 +4531,19 @@ window.closeAddEntryModal = function() {
     if (modal) {
         modal.style.display = "none";
         const adminForm = document.getElementById("adminEntryForm");
-        if (adminForm) adminForm.reset();
+        if (adminForm) {
+            adminForm.reset();
+            delete adminForm.dataset.editingId;
+            const submitBtn = adminForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.textContent = 'Save Entry';
+            }
+        }
+
+        const modalHeading = modal.querySelector('h2, h3');
+        if (modalHeading) {
+            modalHeading.textContent = 'Add New Entry';
+        }
     }
 };
 
@@ -4088,6 +4556,7 @@ window.saveAdminEntry = async function(event) {
     console.log('saveAdminEntry invoked');
 
     try {
+        await ensureAuthReady();
         // Defensive element lookup inside try so missing elements are caught
         const adminForm = document.getElementById('adminEntryForm');
         if (!adminForm) {
@@ -4122,6 +4591,7 @@ window.saveAdminEntry = async function(event) {
         const date = dateEl.value;
         const teacherId = teacherEl.value;
         const studentId = studentEl.value;
+        const editingId = adminForm.dataset.editingId || "";
         const timeFrom = timeFromEl.value;
         const timeTo = timeToEl.value;
         const classCount = parseFloat(classCountEl.value);
@@ -4165,9 +4635,7 @@ window.saveAdminEntry = async function(event) {
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayOfWeek = days[dateObj.getDay()];
         
-        // Save entry (payment removed)
-        console.log('Saving entry to Firestore for teacherId', teacherId, 'studentId', studentId);
-        await addDoc(collection(db, "entries"), {
+        const entryPayload = {
             teacherId: teacherId,
             teacherName: teacherData.name,
             teacherEmail: teacherData.email || "",
@@ -4180,12 +4648,27 @@ window.saveAdminEntry = async function(event) {
             classCount: classCount,
             sheetMade: sheetMade,
             homeworkGiven: homeworkGiven,
+            homework: homeworkGiven,
             subject: subject,
-            topic: topic,
-            createdAt: Timestamp.now()
-        });
+            topic: topic
+        };
+
+        console.log('Saving entry to Firestore for teacherId', teacherId, 'studentId', studentId, 'editingId', editingId || 'new');
+
+        if (editingId) {
+            await updateDoc(doc(db, "entries", editingId), {
+                ...entryPayload,
+                updatedAt: Timestamp.now()
+            });
+            alert("Entry updated successfully.");
+        } else {
+            await addDoc(collection(db, "entries"), {
+                ...entryPayload,
+                createdAt: Timestamp.now()
+            });
+            alert("Entry added successfully.");
+        }
         
-        alert("Entry added successfully.");
         closeAddEntryModal();
         loadAdminEntries();
         
