@@ -83,7 +83,21 @@ document.getElementById('login-form').addEventListener('submit', async function(
         }
         
         try {
-            // Query Firestore for teacher with exact case-sensitive name match
+            // First, check for locked teachers (regardless of status)
+            const lockedQuery = query(
+                collection(db, "teachers"),
+                where("name", "==", teacherName),
+                where("isLocked", "==", true)
+            );
+            
+            const lockedSnapshot = await getDocs(lockedQuery);
+            if (!lockedSnapshot.empty) {
+                errorMessage.textContent = 'Your account has been locked and marked absent. Please contact your admin to login back.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+            
+            // Query Firestore for active teacher with exact case-sensitive name match
             const teachersQuery = query(
                 collection(db, "teachers"),
                 where("name", "==", teacherName),
