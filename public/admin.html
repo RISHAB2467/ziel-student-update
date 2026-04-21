@@ -281,6 +281,83 @@
             accent-color: #d4af37;
         }
 
+        /* Accountability Monitor (collapsible) */
+        .accountability-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .accountability-toggle {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0;
+            color: inherit;
+            font: inherit;
+        }
+
+        .accountability-title-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .accountability-arrow {
+            font-size: 12px;
+            color: #666;
+            width: 14px;
+            text-align: center;
+        }
+
+        .accountability-date {
+            font-size: 13px;
+            color: #666;
+            margin-left: 6px;
+            font-weight: 500;
+        }
+
+        .accountability-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .accountability-view-btn {
+            border: 1px solid #dadce0;
+            background: white;
+            color: #2c2c2c;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .accountability-body {
+            margin-top: 10px;
+        }
+
+        .accountability-subtitle {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .accountability-collapsed {
+            display: none;
+        }
+
+        .accountability-list-scroll {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
         /* Add Form */
         .add-form {
             background: rgba(255, 255, 255, 0.9);
@@ -701,15 +778,24 @@
             <h2 style="background: linear-gradient(135deg, #90ee90, #7dd87d); color: white; padding: 16px 24px; border-radius: 8px; font-family: 'Roboto', sans-serif; font-weight: 600; font-size: 18px; box-shadow: 0 2px 6px rgba(144, 238, 144, 0.3); margin-bottom: 24px;">Teacher Management</h2>
 
             <div class="admin-card premium-shadow" style="margin-bottom: 20px;">
-                <div class="card-header">
-                    <h3>Accountability Monitor</h3>
-                    <p>Teachers who have not submitted data for <span id="accountabilityDateLabel">today</span></p>
-                    <div style="margin-top: 10px;">
+                <div class="card-header accountability-header">
+                    <button type="button" class="accountability-toggle" id="accountabilityToggle" aria-expanded="false" aria-controls="accountabilityBody">
+                        <span class="accountability-title-wrap">
+                            <span id="accountabilityArrow" class="accountability-arrow">▼</span>
+                            <h3 style="margin:0;">Accountability Monitor</h3>
+                        </span>
+                        <span class="accountability-date">Date: <span id="accountabilityDateLabel">today</span></span>
+                    </button>
+                    <div class="accountability-actions">
+                        <button type="button" class="accountability-view-btn" id="accountabilityViewBtn">View List</button>
                         <button type="button" class="btn-restore" onclick="unlockAllBeforeMidnight()">Unlock All Now (Till 12 AM)</button>
                     </div>
                 </div>
-                <div id="absent-list" class="admin-list-container">
-                    <div class="loading-spinner">Checking database...</div>
+                <div id="accountabilityBody" class="accountability-body accountability-collapsed">
+                    <p class="accountability-subtitle">Teachers who have not submitted data for the selected date.</p>
+                    <div id="absent-list" class="admin-list-container accountability-list-scroll">
+                        <div class="loading-spinner">Checking database...</div>
+                    </div>
                 </div>
             </div>
             
@@ -1296,6 +1382,38 @@
         });
     })();
 </script>
+
+    <script>
+        (function () {
+            function bindAccountabilityCollapse() {
+                const toggle = document.getElementById('accountabilityToggle');
+                const viewBtn = document.getElementById('accountabilityViewBtn');
+                const body = document.getElementById('accountabilityBody');
+                const arrow = document.getElementById('accountabilityArrow');
+
+                if (!toggle || !viewBtn || !body || !arrow) return;
+
+                const setState = (expanded) => {
+                    body.classList.toggle('accountability-collapsed', !expanded);
+                    toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                    arrow.textContent = expanded ? '▲' : '▼';
+                    viewBtn.textContent = expanded ? 'Collapse List' : 'View List';
+                };
+
+                setState(false);
+
+                const onToggle = () => {
+                    const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                    setState(!expanded);
+                };
+
+                toggle.addEventListener('click', onToggle);
+                viewBtn.addEventListener('click', onToggle);
+            }
+
+            document.addEventListener('DOMContentLoaded', bindAccountabilityCollapse);
+        })();
+    </script>
 
     <script>
         // Check for auto-download monthly data
