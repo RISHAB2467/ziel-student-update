@@ -804,16 +804,6 @@ window.loadAccountabilityTracker = async function() {
             const submittedYesterday = submittedTeacherKeys.has(teacherKey) || (teacherNameKey ? submittedTeacherKeys.has(teacherNameKey) : false);
             const isLocked = teacher.isLocked || false;
 
-            if (isPreMidnight && isLocked && !bulkUnlockInProgress) {
-                bulkUnlockInProgress = true;
-                updateDoc(doc(db, 'teachers', teacherId), {
-                    isLocked: false,
-                    lockDate: null
-                }).finally(() => {
-                    bulkUnlockInProgress = false;
-                });
-            }
-
             const row = document.createElement('div');
             row.className = 'teacher-status-row';
 
@@ -825,7 +815,7 @@ window.loadAccountabilityTracker = async function() {
             infoDiv.appendChild(nameEl);
 
             const badge = document.createElement('span');
-            const effectiveLocked = isLocked && !isPreMidnight;
+            const effectiveLocked = isLocked;
             badge.className = effectiveLocked ? 'badge-locked' : 'badge-pending';
             badge.textContent = effectiveLocked ? 'LOCKED' : 'PENDING';
             infoDiv.appendChild(badge);
