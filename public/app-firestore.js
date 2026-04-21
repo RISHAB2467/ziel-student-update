@@ -394,6 +394,46 @@ function setupUserInactivityIdle() {
     resetIdleTimer();
 }
 
+function setupScheduledNightlyIdle() {
+    if (window.__scheduledIdleInitialized) return;
+    window.__scheduledIdleInitialized = true;
+
+    const role = localStorage.getItem('role');
+    if (role !== 'admin' && role !== 'teacher') return;
+
+    const supportedPages = window.location.pathname.includes('admin.html') || window.location.pathname.includes('teacher.html');
+    if (!supportedPages) return;
+
+    const checkScheduledIdle = () => {
+        const now = new Date();
+        const kolkataHours = parseInt(new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            hour12: false
+        }).format(now));
+
+        const isNightlyWindow = kolkataHours >= 1 && kolkataHours < 8;
+
+        if (isNightlyWindow && !window.__scheduledIdlePaused) {
+            pauseLiveDataActivity();
+            window.__scheduledIdlePaused = true;
+            console.log('Scheduled nightly idle: 1 AM - 8 AM, pausing live data');
+        } else if (!isNightlyWindow && window.__scheduledIdlePaused) {
+            resumeLiveDataActivity();
+            window.__scheduledIdlePaused = false;
+            console.log('Scheduled idle ended (after 8 AM), resuming live data');
+        }
+    };
+
+    // Check immediately on setup
+    checkScheduledIdle();
+
+    // Check every minute (60000 ms) for schedule changes
+    if (!window.__scheduledIdleCheckInterval) {
+        window.__scheduledIdleCheckInterval = setInterval(checkScheduledIdle, 60000);
+    }
+}
+
 // Get Kolkata date in YYYY-MM-DD format regardless of device timezone
 function getKolkataDateISO() {
     return new Intl.DateTimeFormat('en-CA', {
@@ -3822,6 +3862,7 @@ document.addEventListener('DOMContentLoaded', function() {
 if (window.location.pathname.includes('teacher.html')) {
     document.addEventListener('DOMContentLoaded', async function() {
         setupUserInactivityIdle();
+        setupScheduledNightlyIdle();
         // Check if teacher is logged in
         const role = localStorage.getItem("role");
         let teacherName = localStorage.getItem("teacherName") || localStorage.getItem("currentTeacherName");
@@ -3908,6 +3949,7 @@ if (window.location.pathname.includes('index.html') || window.location.pathname 
 if (window.location.pathname.includes('admin.html')) {
     document.addEventListener('DOMContentLoaded', function() {
         setupUserInactivityIdle();
+        setupScheduledNightlyIdle();
         // Admin background polling disabled: realtime listeners provide fresh data for all collections
         // Removed: window.startUpdateLoop(['entries', 'doubt_sessions'], 10 * 60 * 1000, 'admin-fast');
         // Removed: window.startUpdateLoop(['teachers', 'students'], 60 * 60 * 1000, 'admin-slow');
