@@ -19,8 +19,6 @@ import {
     serverTimestamp,
     writeBatch
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { getAuth, connectAuthEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFunctions, connectFunctionsEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
 import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
 // Initialize Firebase
@@ -39,13 +37,8 @@ const db = initializeFirestore(app, {
     useFetchStreams: false
 });
 
-const auth = getAuth(app);
-const functions = getFunctions(app);
-
 if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
     connectFirestoreEmulator(db, '127.0.0.1', 8081);
-    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
-    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
 }
 
 async function ensureAuthReady() {
