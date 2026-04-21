@@ -3558,11 +3558,27 @@ window.startUpdateLoop = function(collectionNames = [], intervalMs = 30 * 60 * 1
             return;
         }
 
+        const isAdminPage = window.location.pathname.includes('admin.html');
+        const isAdminTabVisible = (tabId) => {
+            const tab = document.getElementById(tabId);
+            return !!tab && tab.style.display !== 'none';
+        };
+
         for (const collectionName of collectionNames) {
             // Skip polling collections that already have active realtime listeners.
             if (realtimeCollections.has(collectionName)) {
                 continue;
             }
+
+            // Avoid heavy background polling when related admin tabs are not visible.
+            if (isAdminPage && collectionName === 'entries' && !isAdminTabVisible('entries-tab')) {
+                continue;
+            }
+
+            if (isAdminPage && collectionName === 'doubt_sessions' && !isAdminTabVisible('doubtsessions-tab')) {
+                continue;
+            }
+
             await window.updateLocalDataList(collectionName);
         }
     };
@@ -3736,40 +3752,22 @@ let allAdminEntries = [];
 let filteredAdminEntries = [];
 let currentPage = 1;
 let entriesPerPage = 25;
+const ADMIN_ENTRIES_CACHE_TTL_MS = 60 * 1000;
+let adminEntriesCache = {
+    data: null,
+    fetchedAt: 0,
+};
+let adminEntriesFetchPromise = null;
 
 // Load all admin entries with stats
-window.loadAdminEntries = async function() {
+window.loadAdminEntries = async function(options = {}) {
     const entriesList = document.getElementById("admin-entries-list");
     if (!entriesList) return;
 
-    try {
-        await ensureAuthReady();
-        // Get all entries (no limit)
-        const entriesSnapshot = await getDocs(collection(db, "entries"));
-        
-        // Get all doubt/demo sessions
-        const sessionsSnapshot = await getDocs(collection(db, "doubt_sessions"));
-        
-        // Store all entries
-        allAdminEntries = [];
-        
-        // Add regular entries
-        entriesSnapshot.forEach(doc => {
-            allAdminEntries.push({
-                id: doc.id,
-                type: 'entry',
-                ...doc.data()
-            });
-        });
-        
-        // Add doubt/demo sessions
-        sessionsSnapshot.forEach(doc => {
-            allAdminEntries.push({
-                id: doc.id,
-                type: 'doubt_session',
-                ...doc.data()
-            });
-        });
+    const { forceRefresh = false } = options;
+
+    const applyAdminEntriesData = (entriesData) => {
+        allAdminEntries = [...entriesData];
 
         if (allAdminEntries.length === 0) {
             entriesList.innerHTML = '<tr><td colspan="9" class="empty-state" style="padding: 40px; text-align: center; color: #7f8c8d;">No entries found. Teachers can create entries from their dashboard.</td></tr>';
@@ -3789,15 +3787,66 @@ window.loadAdminEntries = async function() {
 
         // Initially show all entries
         filteredAdminEntries = [...allAdminEntries];
-        
+
         // Apply default sorting (date descending)
         applySorting();
-        
+
         currentPage = 1;
-        
+
         // Update display
         displayAdminEntries();
         updateEntryStats(allAdminEntries, filteredAdminEntries);
+    };
+
+    const cacheAge = Date.now() - adminEntriesCache.fetchedAt;
+    if (!forceRefresh && adminEntriesCache.data && cacheAge <= ADMIN_ENTRIES_CACHE_TTL_MS) {
+        applyAdminEntriesData(adminEntriesCache.data);
+        return;
+    }
+
+    try {
+        await ensureAuthReady();
+        if (!adminEntriesFetchPromise) {
+            adminEntriesFetchPromise = (async () => {
+                // Get all entries (no limit)
+                const entriesSnapshot = await getDocs(collection(db, "entries"));
+
+                // Get all doubt/demo sessions
+                const sessionsSnapshot = await getDocs(collection(db, "doubt_sessions"));
+
+                const mergedEntries = [];
+
+                // Add regular entries
+                entriesSnapshot.forEach(doc => {
+                    mergedEntries.push({
+                        id: doc.id,
+                        type: 'entry',
+                        ...doc.data()
+                    });
+                });
+
+                // Add doubt/demo sessions
+                sessionsSnapshot.forEach(doc => {
+                    mergedEntries.push({
+                        id: doc.id,
+                        type: 'doubt_session',
+                        ...doc.data()
+                    });
+                });
+
+                adminEntriesCache = {
+                    data: mergedEntries,
+                    fetchedAt: Date.now(),
+                };
+
+                return mergedEntries;
+            })().finally(() => {
+                adminEntriesFetchPromise = null;
+            });
+        }
+
+        const mergedEntries = await adminEntriesFetchPromise;
+        applyAdminEntriesData(mergedEntries);
         
     } catch (error) {
         console.error("Error loading admin entries:", error);
@@ -3963,7 +4012,7 @@ window.resetAdminFilters = function() {
 
 // Refresh entries
 window.refreshAdminEntries = function() {
-    loadAdminEntries();
+    loadAdminEntries({ forceRefresh: true });
 };
 
 // Display entries with pagination
