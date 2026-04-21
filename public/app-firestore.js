@@ -249,7 +249,21 @@ let isOTPSending = false; // Prevent duplicate sends
 const OTP_VALIDITY = 5 * 60 * 1000; // 5 minutes
 let reminderUnsubscribe = null;
 let accountabilityTrackerUnsubscribe = null;
+let accountabilityEntriesUnsubscribe = null;
+let allTeachersUnsubscribe = null;
+let allStudentsUnsubscribe = null;
 let bulkUnlockInProgress = false;
+
+const realtimeCollections = new Set();
+
+function setRealtimeCollectionState(collectionName, active) {
+    if (!collectionName) return;
+    if (active) {
+        realtimeCollections.add(collectionName);
+    } else {
+        realtimeCollections.delete(collectionName);
+    }
+}
 
 // Get Kolkata date in YYYY-MM-DD format regardless of device timezone
 function getKolkataDateISO() {
@@ -578,6 +592,11 @@ window.loadAccountabilityTracker = async function() {
         accountabilityTrackerUnsubscribe = null;
     }
 
+    if (accountabilityEntriesUnsubscribe) {
+        accountabilityEntriesUnsubscribe();
+        accountabilityEntriesUnsubscribe = null;
+    }
+
     await ensureAuthReady();
 
     const q = query(
@@ -587,32 +606,24 @@ window.loadAccountabilityTracker = async function() {
 
     absentListDiv.innerHTML = '<div class="loading-spinner">Checking database...</div>';
 
-    accountabilityTrackerUnsubscribe = onSnapshot(q, (snapshot) => {
-        (async () => {
-            absentListDiv.innerHTML = '';
+    let latestTeacherSnapshot = null;
+    let submittedTeacherKeys = new Set();
+    let trackedYesterdayDate = null;
 
-            const { hour } = getKolkataTimeParts();
-            const isPreMidnight = hour >= 1 && hour <= 23;
-            const yesterday = getKolkataDateWithOffsetISO(-1);
-            const submittedSnapshot = await getDocs(query(collection(db, 'entries'), where('date', '==', yesterday)));
-            const submittedTeacherKeys = new Set();
+    const renderTracker = () => {
+        if (!latestTeacherSnapshot) return;
 
-            submittedSnapshot.forEach((entryDoc) => {
-                const entryData = entryDoc.data() || {};
-                if (entryData.teacherId) {
-                    submittedTeacherKeys.add(`id:${String(entryData.teacherId)}`);
-                }
-                if (entryData.teacherName) {
-                    submittedTeacherKeys.add(`name:${String(entryData.teacherName).trim().toLowerCase()}`);
-                }
-            });
+        absentListDiv.innerHTML = '';
 
-            if (snapshot.empty) {
-                absentListDiv.innerHTML = "<p class='status-success'>No active teachers found.</p>";
-                return;
-            }
+        const { hour } = getKolkataTimeParts();
+        const isPreMidnight = hour >= 1 && hour <= 23;
 
-            snapshot.forEach((docSnap) => {
+        if (latestTeacherSnapshot.empty) {
+            absentListDiv.innerHTML = "<p class='status-success'>No active teachers found.</p>";
+            return;
+        }
+
+        latestTeacherSnapshot.forEach((docSnap) => {
             const teacher = docSnap.data() || {};
             const teacherId = docSnap.id;
             const teacherKey = `id:${teacherId}`;
@@ -659,11 +670,49 @@ window.loadAccountabilityTracker = async function() {
             row.appendChild(infoDiv);
             row.appendChild(actionsDiv);
             absentListDiv.appendChild(row);
-            });
-        })().catch((error) => {
-            console.error('Accountability tracker render error:', error);
-            absentListDiv.innerHTML = "<p style='color:#c62828;'>Unable to load accountability monitor right now.</p>";
         });
+    };
+
+    const attachEntriesListener = (targetDate) => {
+        if (accountabilityEntriesUnsubscribe) {
+            accountabilityEntriesUnsubscribe();
+            accountabilityEntriesUnsubscribe = null;
+        }
+
+        trackedYesterdayDate = targetDate;
+        accountabilityEntriesUnsubscribe = onSnapshot(
+            query(collection(db, 'entries'), where('date', '==', targetDate)),
+            (entrySnapshot) => {
+                submittedTeacherKeys = new Set();
+
+                entrySnapshot.forEach((entryDoc) => {
+                    const entryData = entryDoc.data() || {};
+                    if (entryData.teacherId) {
+                        submittedTeacherKeys.add(`id:${String(entryData.teacherId)}`);
+                    }
+                    if (entryData.teacherName) {
+                        submittedTeacherKeys.add(`name:${String(entryData.teacherName).trim().toLowerCase()}`);
+                    }
+                });
+
+                renderTracker();
+            },
+            (entriesError) => {
+                console.error('Accountability entries listener error:', entriesError);
+                submittedTeacherKeys = new Set();
+                renderTracker();
+            }
+        );
+    };
+
+    accountabilityTrackerUnsubscribe = onSnapshot(q, (snapshot) => {
+        const yesterday = getKolkataDateWithOffsetISO(-1);
+        if (trackedYesterdayDate !== yesterday) {
+            attachEntriesListener(yesterday);
+        }
+
+        latestTeacherSnapshot = snapshot;
+        renderTracker();
     }, (error) => {
         console.error('Accountability tracker error:', error);
         absentListDiv.innerHTML = "<p style='color:#c62828;'>Unable to load accountability monitor right now.</p>";
@@ -1951,8 +2000,19 @@ function updateStats() {
 window.initializeData = async function() {
     await ensureAuthReady();
 
+    if (allTeachersUnsubscribe) {
+        allTeachersUnsubscribe();
+        allTeachersUnsubscribe = null;
+    }
+
+    if (allStudentsUnsubscribe) {
+        allStudentsUnsubscribe();
+        allStudentsUnsubscribe = null;
+    }
+
     // Set up real-time listener for teachers
-    onSnapshot(collection(db, "teachers"), (snapshot) => {
+    allTeachersUnsubscribe = onSnapshot(collection(db, "teachers"), (snapshot) => {
+        setRealtimeCollectionState('teachers', true);
         allTeachers = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -1972,11 +2032,13 @@ window.initializeData = async function() {
             });
         }
     }, (error) => {
+        setRealtimeCollectionState('teachers', false);
         console.error('Teachers listener error:', error);
     });
 
     // Set up real-time listener for students
-    onSnapshot(collection(db, "students"), (snapshot) => {
+    allStudentsUnsubscribe = onSnapshot(collection(db, "students"), (snapshot) => {
+        setRealtimeCollectionState('students', true);
         allStudents = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -1984,6 +2046,7 @@ window.initializeData = async function() {
         filterStudents();
         updateStats();
     }, (error) => {
+        setRealtimeCollectionState('students', false);
         console.error('Students listener error:', error);
     });
 }
@@ -3496,6 +3559,10 @@ window.startUpdateLoop = function(collectionNames = [], intervalMs = 30 * 60 * 1
         }
 
         for (const collectionName of collectionNames) {
+            // Skip polling collections that already have active realtime listeners.
+            if (realtimeCollections.has(collectionName)) {
+                continue;
+            }
             await window.updateLocalDataList(collectionName);
         }
     };
