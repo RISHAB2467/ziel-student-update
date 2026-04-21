@@ -2137,7 +2137,7 @@ window.initializeData = async function() {
     }
 
     // Set up real-time listener for teachers (limited to 500 to reduce read amplification)
-    allTeachersUnsubscribe = onSnapshot(query(collection(db, "teachers"), orderBy('name'), limit(500)), (snapshot) => {
+    allTeachersUnsubscribe = onSnapshot(query(collection(db, "teachers"), limit(500)), (snapshot) => {
         setRealtimeCollectionState('teachers', true);
         allTeachers = snapshot.docs.map(doc => ({
             id: doc.id,
@@ -2163,7 +2163,7 @@ window.initializeData = async function() {
     });
 
     // Set up real-time listener for students
-    allStudentsUnsubscribe = onSnapshot(query(collection(db, "students"), orderBy('name'), limit(1000)), (snapshot) => {
+    allStudentsUnsubscribe = onSnapshot(query(collection(db, "students"), limit(1000)), (snapshot) => {
         setRealtimeCollectionState('students', true);
         allStudents = snapshot.docs.map(doc => ({
             id: doc.id,
@@ -3934,10 +3934,12 @@ window.loadAdminEntries = async function(options = {}) {
         if (!adminEntriesFetchPromise) {
             adminEntriesFetchPromise = (async () => {
                 // Get last 500 entries (limit to reduce read amplification on cache expiry)
-                const entriesSnapshot = await getDocs(query(collection(db, "entries"), orderBy('createdAt', 'desc'), limit(500)));
+                // Note: orderBy is intentionally omitted to avoid requiring composite indexes
+                const entriesSnapshot = await getDocs(query(collection(db, "entries"), limit(500)));
 
                 // Get last 500 doubt/demo sessions (limit to reduce read amplification)
-                const sessionsSnapshot = await getDocs(query(collection(db, "doubt_sessions"), orderBy('createdAt', 'desc'), limit(500)));
+                // Note: orderBy is intentionally omitted to avoid requiring composite indexes
+                const sessionsSnapshot = await getDocs(query(collection(db, "doubt_sessions"), limit(500)));
 
                 const mergedEntries = [];
 
