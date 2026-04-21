@@ -166,6 +166,9 @@ window.setupNotifications = async function() {
                 lastTokenUpdate: serverTimestamp()
             });
             console.log('Device Token saved to Firestore');
+            await showAppNotification('ZIEL Alerts Enabled', {
+                body: 'Test notification successful. You will now receive reminders.'
+            });
             alert('Notifications enabled for ZIEL Classes!');
             return;
         }
@@ -578,8 +581,15 @@ window.runReminderEngine = function() {
                     });
                     window.__lastReminderNotifyAt = nowMs;
                 }
+
+                // If notifications are blocked/default, tell teacher once per session during reminder window.
+                if (isReminderWindow && (!('Notification' in window) || Notification.permission !== 'granted') && !window.__notificationPermissionWarned) {
+                    window.__notificationPermissionWarned = true;
+                    alert('Reminder alert is active, but browser notifications are not enabled. Tap "Enable Alerts" and allow notifications in your browser.');
+                }
             } else {
                 window.__lastReminderNotifyAt = null;
+                window.__notificationPermissionWarned = false;
             }
 
             if (isReminderWindow && pendingAtDeadline) {
@@ -3636,7 +3646,21 @@ window.loadAllEntries = async function() {
 window.updateLocalDataList = async function(collectionName) {
     try {
         await ensureAuthReady();
-        const querySnapshot = await getDocs(collection(db, collectionName));
+        let querySnapshot;
+
+        // Background cache sync should be intentionally lightweight to control read costs.
+        if (collectionName === 'entries') {
+            querySnapshot = await getDocs(query(collection(db, collectionName), limit(120)));
+        } else if (collectionName === 'doubt_sessions') {
+            querySnapshot = await getDocs(query(collection(db, collectionName), limit(120)));
+        } else if (collectionName === 'students') {
+            querySnapshot = await getDocs(query(collection(db, collectionName), limit(400)));
+        } else if (collectionName === 'teachers') {
+            querySnapshot = await getDocs(query(collection(db, collectionName), limit(200)));
+        } else {
+            querySnapshot = await getDocs(collection(db, collectionName));
+        }
+
         const dataList = [];
 
         querySnapshot.forEach((docSnap) => {
@@ -3832,7 +3856,8 @@ if (window.location.pathname.includes('teacher.html')) {
                 window.__reminderIntervalId = setInterval(runReminderEngine, 60000);
             }
 
-            window.startUpdateLoop(['students', 'entries', 'teachers'], 30 * 60 * 1000);
+            // Teacher background cache sync: only students list is needed periodically.
+            window.startUpdateLoop(['students'], 2 * 60 * 60 * 1000, 'teacher-light');
         }
         
         // Setup form submission
