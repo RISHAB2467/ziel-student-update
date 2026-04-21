@@ -255,6 +255,7 @@ let allStudentsUnsubscribe = null;
 let bulkUnlockInProgress = false;
 
 const realtimeCollections = new Set();
+const USER_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 function setRealtimeCollectionState(collectionName, active) {
     if (!collectionName) return;
@@ -263,6 +264,130 @@ function setRealtimeCollectionState(collectionName, active) {
     } else {
         realtimeCollections.delete(collectionName);
     }
+}
+
+function pauseUpdateLoops() {
+    const loops = Object.values(window.__updateLoops || {});
+    loops.forEach((activeLoop) => {
+        if (activeLoop.intervalId) {
+            clearInterval(activeLoop.intervalId);
+            activeLoop.intervalId = null;
+        }
+    });
+}
+
+function resumeUpdateLoops() {
+    const loops = Object.values(window.__updateLoops || {});
+    loops.forEach((activeLoop) => {
+        if (typeof activeLoop.run === 'function') {
+            activeLoop.run();
+            if (!activeLoop.intervalId) {
+                activeLoop.intervalId = setInterval(activeLoop.run, activeLoop.intervalMs || (30 * 60 * 1000));
+            }
+        }
+    });
+}
+
+function pauseLiveDataActivity() {
+    pauseUpdateLoops();
+
+    if (allTeachersUnsubscribe) {
+        allTeachersUnsubscribe();
+        allTeachersUnsubscribe = null;
+        setRealtimeCollectionState('teachers', false);
+    }
+
+    if (allStudentsUnsubscribe) {
+        allStudentsUnsubscribe();
+        allStudentsUnsubscribe = null;
+        setRealtimeCollectionState('students', false);
+    }
+
+    if (accountabilityTrackerUnsubscribe) {
+        accountabilityTrackerUnsubscribe();
+        accountabilityTrackerUnsubscribe = null;
+    }
+
+    if (accountabilityEntriesUnsubscribe) {
+        accountabilityEntriesUnsubscribe();
+        accountabilityEntriesUnsubscribe = null;
+    }
+
+    if (reminderUnsubscribe) {
+        reminderUnsubscribe();
+        reminderUnsubscribe = null;
+    }
+
+    if (window.__reminderIntervalId) {
+        clearInterval(window.__reminderIntervalId);
+        window.__reminderIntervalId = null;
+    }
+
+    window.__userIdlePaused = true;
+}
+
+function resumeLiveDataActivity() {
+    resumeUpdateLoops();
+
+    const role = localStorage.getItem('role');
+    const isAdminPage = window.location.pathname.includes('admin.html');
+    const isTeacherPage = window.location.pathname.includes('teacher.html');
+
+    if (isAdminPage && role === 'admin') {
+        initializeData();
+        if (typeof window.loadAccountabilityTracker === 'function') {
+            window.loadAccountabilityTracker();
+        }
+    }
+
+    if (isTeacherPage && role === 'teacher') {
+        runReminderEngine();
+        if (!window.__reminderIntervalId) {
+            window.__reminderIntervalId = setInterval(runReminderEngine, 60000);
+        }
+    }
+
+    window.__userIdlePaused = false;
+}
+
+function setupUserInactivityIdle() {
+    if (window.__userIdleManagerInitialized) return;
+    window.__userIdleManagerInitialized = true;
+
+    const role = localStorage.getItem('role');
+    if (role !== 'admin' && role !== 'teacher') return;
+
+    const supportedPages = window.location.pathname.includes('admin.html') || window.location.pathname.includes('teacher.html');
+    if (!supportedPages) return;
+
+    const resetIdleTimer = () => {
+        if (window.__idleTimeoutId) {
+            clearTimeout(window.__idleTimeoutId);
+        }
+
+        if (window.__userIdlePaused) {
+            resumeLiveDataActivity();
+        }
+
+        window.__idleTimeoutId = setTimeout(() => {
+            pauseLiveDataActivity();
+        }, USER_IDLE_TIMEOUT_MS);
+    };
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+    activityEvents.forEach((eventName) => {
+        window.addEventListener(eventName, resetIdleTimer, { passive: true });
+    });
+
+    window.addEventListener('beforeunload', () => {
+        if (window.__idleTimeoutId) {
+            clearTimeout(window.__idleTimeoutId);
+            window.__idleTimeoutId = null;
+        }
+        pauseLiveDataActivity();
+    });
+
+    resetIdleTimer();
 }
 
 // Get Kolkata date in YYYY-MM-DD format regardless of device timezone
@@ -3443,10 +3568,7 @@ if (window.location.pathname.includes('admin.html')) {
             localStorage.removeItem("adminLoginTime");
             if (loginSection) loginSection.style.display = "flex";
             if (dashboardSection) dashboardSection.style.display = "none";
-            if (accountabilityTrackerUnsubscribe) {
-                accountabilityTrackerUnsubscribe();
-                accountabilityTrackerUnsubscribe = null;
-            }
+            pauseLiveDataActivity();
         });
         
         // Sort field and order change listeners
@@ -3647,6 +3769,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Teacher page initialization
 if (window.location.pathname.includes('teacher.html')) {
     document.addEventListener('DOMContentLoaded', async function() {
+        setupUserInactivityIdle();
         // Check if teacher is logged in
         const role = localStorage.getItem("role");
         let teacherName = localStorage.getItem("teacherName") || localStorage.getItem("currentTeacherName");
@@ -3730,6 +3853,7 @@ if (window.location.pathname.includes('index.html') || window.location.pathname 
 
 if (window.location.pathname.includes('admin.html')) {
     document.addEventListener('DOMContentLoaded', function() {
+        setupUserInactivityIdle();
         // Admin needs faster visibility for fresh logs.
         window.startUpdateLoop(['entries', 'doubt_sessions'], 5 * 60 * 1000, 'admin-fast');
         // Less volatile data can stay on slower sync.
