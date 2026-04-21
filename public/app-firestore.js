@@ -2004,12 +2004,8 @@ window.initializeData = async function() {
         console.error('Teachers listener error:', error);
     });
 
-    // ✅ FIX #1 + Safety Cap: Filter to active students with limit(50) to prevent read spike
-    const studentsQuery = query(
-        collection(db, "students"), 
-        where('status', '==', 'active'),
-        limit(50)
-    );
+    // Load all students so the student list and active count always reflect the full dataset.
+    const studentsQuery = query(collection(db, "students"));
     allStudentsUnsubscribe = onSnapshot(studentsQuery, (snapshot) => {
         allStudents = snapshot.docs.map(doc => ({
             id: doc.id,
@@ -2655,12 +2651,9 @@ window.filterTeachers = function() {
 // Filter students
 window.filterStudents = function() {
     const searchTerm = document.getElementById("searchStudent")?.value.toLowerCase() || "";
-    const showInactive = document.getElementById("showInactiveStudents")?.checked || false;
-
-    let filtered = allStudents.filter(s => {
-        const matchesSearch = s.name.toLowerCase().includes(searchTerm);
-        const matchesStatus = showInactive || s.status === "active";
-        return matchesSearch && matchesStatus;
+    const filtered = allStudents.filter(s => {
+        const studentName = String(s.name || "").toLowerCase();
+        return studentName.includes(searchTerm);
     });
 
     displayStudents(filtered);
