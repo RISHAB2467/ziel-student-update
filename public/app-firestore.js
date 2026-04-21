@@ -3883,8 +3883,8 @@ if (window.location.pathname.includes('teacher.html')) {
                 window.__reminderIntervalId = setInterval(runReminderEngine, 60000);
             }
 
-            // Teacher background cache sync: only students list is needed periodically.
-            window.startUpdateLoop(['students'], 2 * 60 * 60 * 1000, 'teacher-light');
+            // Teacher background polling disabled: realtime listeners provide fresh data
+            // Removed: window.startUpdateLoop(['students'], 2 * 60 * 60 * 1000, 'teacher-light');
         }
         
         // Setup form submission
@@ -3900,18 +3900,17 @@ if (window.location.pathname.includes('teacher.html')) {
 
 if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/public/')) {
     document.addEventListener('DOMContentLoaded', function() {
-        // Login page data is low-volatility; keep sync infrequent to reduce background reads.
-        window.startUpdateLoop(['teachers'], 2 * 60 * 60 * 1000, 'index-teachers');
+        // Login page background polling disabled: realtime listeners provide fresh data
+        // Removed: window.startUpdateLoop(['teachers'], 2 * 60 * 60 * 1000, 'index-teachers');
     });
 }
 
 if (window.location.pathname.includes('admin.html')) {
     document.addEventListener('DOMContentLoaded', function() {
         setupUserInactivityIdle();
-        // Keep admin fresh while reducing read churn.
-        window.startUpdateLoop(['entries', 'doubt_sessions'], 10 * 60 * 1000, 'admin-fast');
-        // Less volatile data can stay on slower sync.
-        window.startUpdateLoop(['teachers', 'students'], 60 * 60 * 1000, 'admin-slow');
+        // Admin background polling disabled: realtime listeners provide fresh data for all collections
+        // Removed: window.startUpdateLoop(['entries', 'doubt_sessions'], 10 * 60 * 1000, 'admin-fast');
+        // Removed: window.startUpdateLoop(['teachers', 'students'], 60 * 60 * 1000, 'admin-slow');
     });
 }
 
