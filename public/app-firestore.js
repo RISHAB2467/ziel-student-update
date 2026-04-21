@@ -434,21 +434,58 @@ function formatKolkataReadableDate() {
     }).format(new Date());
 }
 
-async function getSubmittedTeacherKeysForDate(targetDate) {
-    const snapshot = await getDocs(query(collection(db, 'entries'), where('date', '==', targetDate)));
-    const submittedKeys = new Set();
+const SUBMITTED_TEACHER_KEYS_CACHE_TTL_MS = 2 * 60 * 1000;
+const submittedTeacherKeysCacheByDate = new Map();
 
-    snapshot.forEach((docSnap) => {
-        const data = docSnap.data() || {};
-        if (data.teacherId) {
-            submittedKeys.add(`id:${String(data.teacherId)}`);
-        }
-        if (data.teacherName) {
-            submittedKeys.add(`name:${String(data.teacherName).trim().toLowerCase()}`);
-        }
+async function getSubmittedTeacherKeysForDate(targetDate) {
+    const cacheKey = targetDate || '';
+    const nowMs = Date.now();
+    const cached = submittedTeacherKeysCacheByDate.get(cacheKey);
+
+    if (cached?.keys && (nowMs - cached.fetchedAt) <= SUBMITTED_TEACHER_KEYS_CACHE_TTL_MS) {
+        return new Set(cached.keys);
+    }
+
+    if (cached?.promise) {
+        const inFlightKeys = await cached.promise;
+        return new Set(inFlightKeys);
+    }
+
+    const fetchPromise = (async () => {
+        const snapshot = await getDocs(query(collection(db, 'entries'), where('date', '==', targetDate)));
+        const submittedKeys = new Set();
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data() || {};
+            if (data.teacherId) {
+                submittedKeys.add(`id:${String(data.teacherId)}`);
+            }
+            if (data.teacherName) {
+                submittedKeys.add(`name:${String(data.teacherName).trim().toLowerCase()}`);
+            }
+        });
+
+        submittedTeacherKeysCacheByDate.set(cacheKey, {
+            keys: Array.from(submittedKeys),
+            fetchedAt: Date.now(),
+        });
+
+        return submittedKeys;
+    })();
+
+    submittedTeacherKeysCacheByDate.set(cacheKey, {
+        keys: null,
+        fetchedAt: 0,
+        promise: fetchPromise,
     });
 
-    return submittedKeys;
+    try {
+        const result = await fetchPromise;
+        return new Set(result);
+    } catch (error) {
+        submittedTeacherKeysCacheByDate.delete(cacheKey);
+        throw error;
+    }
 }
 
 // Generate 6-digit OTP
@@ -3873,17 +3910,18 @@ if (window.location.pathname.includes('teacher.html')) {
 
 if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/public/')) {
     document.addEventListener('DOMContentLoaded', function() {
-        window.startUpdateLoop(['teachers'], 30 * 60 * 1000, 'index-teachers');
+        // Login page data is low-volatility; keep sync infrequent to reduce background reads.
+        window.startUpdateLoop(['teachers'], 2 * 60 * 60 * 1000, 'index-teachers');
     });
 }
 
 if (window.location.pathname.includes('admin.html')) {
     document.addEventListener('DOMContentLoaded', function() {
         setupUserInactivityIdle();
-        // Admin needs faster visibility for fresh logs.
-        window.startUpdateLoop(['entries', 'doubt_sessions'], 5 * 60 * 1000, 'admin-fast');
+        // Keep admin fresh while reducing read churn.
+        window.startUpdateLoop(['entries', 'doubt_sessions'], 10 * 60 * 1000, 'admin-fast');
         // Less volatile data can stay on slower sync.
-        window.startUpdateLoop(['teachers', 'students'], 30 * 60 * 1000, 'admin-slow');
+        window.startUpdateLoop(['teachers', 'students'], 60 * 60 * 1000, 'admin-slow');
     });
 }
 
@@ -3902,7 +3940,7 @@ let allAdminEntries = [];
 let filteredAdminEntries = [];
 let currentPage = 1;
 let entriesPerPage = 25;
-const ADMIN_ENTRIES_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes to reduce frequent full-collection reads
+const ADMIN_ENTRIES_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes to reduce repeated dashboard fetches
 let adminEntriesCache = {
     data: null,
     fetchedAt: 0,
