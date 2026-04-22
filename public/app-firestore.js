@@ -15,6 +15,7 @@ import {
     onSnapshot,
     orderBy,
     limit,
+    getCountFromServer,
     Timestamp,
     serverTimestamp,
     writeBatch
@@ -3970,6 +3971,10 @@ let adminEntriesCache = {
     fetchedAt: 0,
 };
 let adminEntriesFetchPromise = null;
+let adminEntriesTotalCountCache = {
+    value: null,
+    fetchedAt: 0,
+};
 
 // Load all admin entries with stats
 window.loadAdminEntries = async function(options = {}) {
@@ -3978,12 +3983,12 @@ window.loadAdminEntries = async function(options = {}) {
 
     const { forceRefresh = false } = options;
 
-    const applyAdminEntriesData = (entriesData) => {
+    const applyAdminEntriesData = (entriesData, totalCountOverride = null) => {
         allAdminEntries = [...entriesData];
 
         if (allAdminEntries.length === 0) {
             entriesList.innerHTML = '<tr><td colspan="9" class="empty-state" style="padding: 40px; text-align: center; color: #7f8c8d;">No entries found. Teachers can create entries from their dashboard.</td></tr>';
-            updateEntryStats([], []);
+            updateEntryStats([], [], totalCountOverride);
             return;
         }
 
@@ -4007,12 +4012,14 @@ window.loadAdminEntries = async function(options = {}) {
 
         // Update display
         displayAdminEntries();
-        updateEntryStats(allAdminEntries, filteredAdminEntries);
+        updateEntryStats(allAdminEntries, filteredAdminEntries, totalCountOverride);
     };
 
     const cacheAge = Date.now() - adminEntriesCache.fetchedAt;
+    const totalCountCacheAge = Date.now() - adminEntriesTotalCountCache.fetchedAt;
     if (!forceRefresh && adminEntriesCache.data && cacheAge <= ADMIN_ENTRIES_CACHE_TTL_MS) {
-        applyAdminEntriesData(adminEntriesCache.data);
+        const cachedTotalCount = totalCountCacheAge <= ADMIN_ENTRIES_CACHE_TTL_MS ? adminEntriesTotalCountCache.value : null;
+        applyAdminEntriesData(adminEntriesCache.data, cachedTotalCount);
         return;
     }
 
@@ -4027,6 +4034,12 @@ window.loadAdminEntries = async function(options = {}) {
                 // Get last 500 doubt/demo sessions (limit to reduce read amplification)
                 // Note: orderBy is intentionally omitted to avoid requiring composite indexes
                 const sessionsSnapshot = await getDocs(query(collection(db, "doubt_sessions"), limit(500)));
+
+                // Get full collection counts cheaply without loading all documents.
+                const [entriesCountSnapshot, sessionsCountSnapshot] = await Promise.all([
+                    getCountFromServer(collection(db, "entries")),
+                    getCountFromServer(collection(db, "doubt_sessions")),
+                ]);
 
                 const mergedEntries = [];
 
@@ -4053,14 +4066,22 @@ window.loadAdminEntries = async function(options = {}) {
                     fetchedAt: Date.now(),
                 };
 
-                return mergedEntries;
+                adminEntriesTotalCountCache = {
+                    value: entriesCountSnapshot.data().count + sessionsCountSnapshot.data().count,
+                    fetchedAt: Date.now(),
+                };
+
+                return {
+                    mergedEntries,
+                    totalCount: adminEntriesTotalCountCache.value,
+                };
             })().finally(() => {
                 adminEntriesFetchPromise = null; // Clear in-flight promise after completion
             });
         }
 
-        const mergedEntries = await adminEntriesFetchPromise;
-        applyAdminEntriesData(mergedEntries);
+        const { mergedEntries, totalCount } = await adminEntriesFetchPromise;
+        applyAdminEntriesData(mergedEntries, totalCount);
         
     } catch (error) {
         console.error("Error loading admin entries:", error);
@@ -4358,13 +4379,16 @@ function displayAdminEntries() {
 }
 
 // Update stats
-function updateEntryStats(allEntries, filteredEntries) {
+function updateEntryStats(allEntries, filteredEntries, totalCountOverride = null) {
     const totalEntriesEl = document.getElementById("totalEntriesCount");
     const filteredEntriesEl = document.getElementById("filteredEntriesCount");
     const teachersCountEl = document.getElementById("teachersCount");
     const studentsCountEl = document.getElementById("studentsCount");
     
-    if (totalEntriesEl) totalEntriesEl.textContent = allEntries.length;
+    if (totalEntriesEl) {
+        const totalCount = Number.isInteger(totalCountOverride) ? totalCountOverride : allEntries.length;
+        totalEntriesEl.textContent = totalCount;
+    }
     if (filteredEntriesEl) filteredEntriesEl.textContent = filteredEntries.length;
     
     if (teachersCountEl) {
