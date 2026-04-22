@@ -416,16 +416,6 @@ footer {
     border: 1px solid #ef9a9a;
 }
 
-.badge-pending {
-    background: #fff3e0;
-    color: #ef6c00;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 700;
-    border: 1px solid #ffcc80;
-}
-
 .btn-restore {
     background: #2e7d32;
     color: #ffffff;

@@ -849,11 +849,13 @@ window.loadAccountabilityTracker = async function() {
             nameEl.textContent = teacher.name || 'Unnamed Teacher';
             infoDiv.appendChild(nameEl);
 
-            const badge = document.createElement('span');
             const effectiveLocked = isLocked;
-            badge.className = effectiveLocked ? 'badge-locked' : 'badge-pending';
-            badge.textContent = effectiveLocked ? 'LOCKED' : 'PENDING';
-            infoDiv.appendChild(badge);
+            if (effectiveLocked) {
+                const badge = document.createElement('span');
+                badge.className = 'badge-locked';
+                badge.textContent = 'LOCKED';
+                infoDiv.appendChild(badge);
+            }
 
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'teacher-actions';
@@ -4028,12 +4030,18 @@ window.loadAdminEntries = async function(options = {}) {
         await ensureAuthReady();
         if (!adminEntriesFetchPromise) {
             adminEntriesFetchPromise = (async () => {
-                // Get most recent 500 entries (ordered by createdAt desc for freshness)
-                // orderBy createdAt desc ensures newest entries always appear first
-                const entriesSnapshot = await getDocs(query(collection(db, "entries"), orderBy('createdAt', 'desc'), limit(500)));
-
-                // Get most recent 500 doubt/demo sessions (ordered by createdAt desc)
-                const sessionsSnapshot = await getDocs(query(collection(db, "doubt_sessions"), orderBy('createdAt', 'desc'), limit(500)));
+                let entriesSnapshot, sessionsSnapshot;
+                
+                try {
+                    // Try with orderBy (requires composite index on createdAt)
+                    entriesSnapshot = await getDocs(query(collection(db, "entries"), orderBy('createdAt', 'desc'), limit(500)));
+                    sessionsSnapshot = await getDocs(query(collection(db, "doubt_sessions"), orderBy('createdAt', 'desc'), limit(500)));
+                } catch (indexError) {
+                    // Fallback: load without orderBy if composite index not ready or missing createdAt fields
+                    console.warn('Composite index not ready, falling back to unordered query:', indexError.message);
+                    entriesSnapshot = await getDocs(query(collection(db, "entries"), limit(500)));
+                    sessionsSnapshot = await getDocs(query(collection(db, "doubt_sessions"), limit(500)));
+                }
 
                 // Get full collection counts cheaply without loading all documents.
                 const [entriesCountSnapshot, sessionsCountSnapshot] = await Promise.all([
