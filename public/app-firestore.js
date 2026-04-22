@@ -18,7 +18,8 @@ import {
     getCountFromServer,
     Timestamp,
     serverTimestamp,
-    writeBatch
+    writeBatch,
+    Query
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
@@ -4027,13 +4028,12 @@ window.loadAdminEntries = async function(options = {}) {
         await ensureAuthReady();
         if (!adminEntriesFetchPromise) {
             adminEntriesFetchPromise = (async () => {
-                // Get last 500 entries (limit to reduce read amplification on cache expiry)
-                // Note: orderBy is intentionally omitted to avoid requiring composite indexes
-                const entriesSnapshot = await getDocs(query(collection(db, "entries"), limit(500)));
+                // Get most recent 500 entries (ordered by createdAt desc for freshness)
+                // orderBy createdAt desc ensures newest entries always appear first
+                const entriesSnapshot = await getDocs(query(collection(db, "entries"), orderBy('createdAt', 'desc'), limit(500)));
 
-                // Get last 500 doubt/demo sessions (limit to reduce read amplification)
-                // Note: orderBy is intentionally omitted to avoid requiring composite indexes
-                const sessionsSnapshot = await getDocs(query(collection(db, "doubt_sessions"), limit(500)));
+                // Get most recent 500 doubt/demo sessions (ordered by createdAt desc)
+                const sessionsSnapshot = await getDocs(query(collection(db, "doubt_sessions"), orderBy('createdAt', 'desc'), limit(500)));
 
                 // Get full collection counts cheaply without loading all documents.
                 const [entriesCountSnapshot, sessionsCountSnapshot] = await Promise.all([
@@ -4043,7 +4043,7 @@ window.loadAdminEntries = async function(options = {}) {
 
                 const mergedEntries = [];
 
-                // Add regular entries
+                // Add regular entries (already sorted newest first from query)
                 entriesSnapshot.forEach(doc => {
                     mergedEntries.push({
                         id: doc.id,
@@ -4052,13 +4052,20 @@ window.loadAdminEntries = async function(options = {}) {
                     });
                 });
 
-                // Add doubt/demo sessions
+                // Add doubt/demo sessions (already sorted newest first from query)
                 sessionsSnapshot.forEach(doc => {
                     mergedEntries.push({
                         id: doc.id,
                         type: 'doubt_session',
                         ...doc.data()
                     });
+                });
+
+                // Re-sort merged entries by createdAt to maintain newest-first order across both types
+                mergedEntries.sort((a, b) => {
+                    const aTime = a.createdAt?.toMillis() || 0;
+                    const bTime = b.createdAt?.toMillis() || 0;
+                    return bTime - aTime; // Newest first
                 });
 
                 adminEntriesCache = {
