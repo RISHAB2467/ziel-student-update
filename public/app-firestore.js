@@ -1112,32 +1112,10 @@ window.login = async function() {
 
             const teacherDoc = snapshot.docs[0];
             const teacherData = teacherDoc.data();
-            const { hour } = getKolkataTimeParts();
-            const isPreMidnight = hour >= 1 && hour <= 23;
 
             if (teacherData.isLocked) {
-                const todayKolkata = getKolkataDateISO();
-                const lockDate = teacherData.lockDate || null;
-
-                if (isPreMidnight) {
-                    await updateDoc(doc(db, "teachers", teacherDoc.id), {
-                        isLocked: false,
-                        lockDate: null
-                    });
-                } else if (lockDate && lockDate === todayKolkata) {
-                    alert("🚫 ACCESS DENIED\n\nYou did not fill your class data before 12:00 AM. Please contact admin to unlock your account.");
-                    return;
-                } else {
-                    await updateDoc(doc(db, "teachers", teacherDoc.id), {
-                        isLocked: false,
-                        lockDate: null
-                    });
-                }
-
-                const freshTeacherDoc = await getDoc(doc(db, "teachers", teacherDoc.id));
-                if (freshTeacherDoc.exists()) {
-                    Object.assign(teacherData, freshTeacherDoc.data());
-                }
+                alert("🚫 ACCESS DENIED\n\nYour account is locked because you did not submit the previous day's class data. Please contact admin to unlock your account and continue.");
+                return;
             }
             
             console.log("Teacher found:", teacherData);
