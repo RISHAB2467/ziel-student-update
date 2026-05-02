@@ -50,9 +50,11 @@ function isLockoutExempt(data) {
 /**
  * Scheduled Function: Midnight Lockout Engine
  * Runs every day at 00:00 (Midnight) Asia/Kolkata time.
- * Logic:
+ * Logic change: lock teachers who have not submitted within the last 72 hours
+ * (and are not on leave), instead of only checking yesterday's submission.
+ * Steps:
  * 1) Fetch all active teachers.
- * 2) If hasSubmittedToday == false AND isOnLeave == false => set isLocked = true.
+ * 2) If lastSubmissionDate is older than 72 hours AND isOnLeave == false => set isLocked = true.
  * 3) Reset hasSubmittedToday and isOnLeave for everyone for the new day.
  */
 exports.midnightLockout = onSchedule({
@@ -72,6 +74,9 @@ exports.midnightLockout = onSchedule({
 
     const teachersRef = db.collection("teachers");
     const snapshot = await teachersRef.where("status", "==", "active").get();
+    // We'll still fetch submitted entries for yesterday for compatibility with
+    // any code paths that rely on that set, but locking decision is based on
+    // lastSubmissionDate (or hasSubmittedToday) and a 72-hour threshold.
     const submittedYesterdayKeys = await getSubmittedTeacherKeysForDate(yesterdayKolkata);
 
     if (snapshot.empty) {
@@ -116,8 +121,55 @@ exports.midnightLockout = onSchedule({
 
       const teacherKey = `id:${teacherDoc.id}`;
       const teacherNameKey = data.name ? `name:${String(data.name).trim().toLowerCase()}` : null;
-      const submittedYesterday = submittedYesterdayKeys.has(teacherKey) || (teacherNameKey ? submittedYesterdayKeys.has(teacherNameKey) : false);
-      const shouldLock = !submittedYesterday && !data.isOnLeave;
+
+      // If teacher explicitly has submitted today, do not lock.
+      if (data.hasSubmittedToday === true) {
+        batch.update(teacherRef, {
+          isLocked: false,
+          lockDate: null,
+          hasSubmittedToday: false,
+          isOnLeave: false,
+          lastResetAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        opsInBatch += 1;
+        processedCount += 1;
+        await commitBatchIfNeeded(false);
+        continue;
+      }
+
+      // Determine last submission time from teacher doc (date string in YYYY-MM-DD)
+      // Fallback: treat missing lastSubmissionDate as 'very old' so they may be locked.
+      let shouldLock = false;
+      try {
+        const now = new Date();
+        // Convert current time to Kolkata timezone offset in milliseconds
+        const utcMs = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const kolkataMs = utcMs + (5.5 * 60 * 60 * 1000);
+
+        const lastSubmissionDateStr = data.lastSubmissionDate || null;
+        if (!lastSubmissionDateStr) {
+          // No recorded submission — consider for locking (unless on leave)
+          shouldLock = !data.isOnLeave;
+        } else {
+          // Parse YYYY-MM-DD into a Date at 00:00 IST for that day
+          const parts = String(lastSubmissionDateStr).split('-');
+          if (parts.length === 3) {
+            const [y, m, d] = parts.map(Number);
+            // Create a Date object for YYYY-MM-DD at 00:00 IST
+            const lastSubmissionUtcMs = Date.UTC(y, m - 1, d) - (5.5 * 60 * 60 * 1000);
+            const lastSubmissionKolkataMs = lastSubmissionUtcMs + (5.5 * 60 * 60 * 1000);
+            const ageMs = kolkataMs - lastSubmissionKolkataMs;
+            const thresholdMs = 72 * 60 * 60 * 1000; // 72 hours
+            shouldLock = (ageMs > thresholdMs) && !data.isOnLeave;
+          } else {
+            // If parsing failed, default to locking unless on leave
+            shouldLock = !data.isOnLeave;
+          }
+        }
+      } catch (err) {
+        console.error('Error computing 72-hour lockout for teacher', teacherDoc.id, err);
+        shouldLock = !data.isOnLeave;
+      }
 
       if (shouldLock) {
         lockedCount += 1;

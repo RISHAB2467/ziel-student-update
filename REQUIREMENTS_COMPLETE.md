@@ -84,6 +84,10 @@ const studentsQuery = query(
 - Cannot edit/delete other teachers' entries
 - Ownership verified before any modification
 
+**Accountability / Lockout:**
+- Teachers who have not recorded a submission for an extended period will be marked locked by the backend. The current policy locks accounts when `lastSubmissionDate` is older than 72 hours and the teacher is not marked `isOnLeave`.
+- Admins can unlock teachers by clearing `isLocked` and `lockDate` on the teacher document.
+
 ### 6. Post-Submission Actions ✅
 
 **Success Handling:**

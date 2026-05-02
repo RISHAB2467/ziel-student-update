@@ -672,20 +672,15 @@ window.runReminderEngine = function() {
 
             reminderOverlay.style.display = 'none';
 
-            if (isPostMidnight && pendingAtDeadline && !window.__midnightLockProcessing) {
-                window.__midnightLockProcessing = true;
-                try {
-                    await updateDoc(doc(db, 'teachers', teacherId), {
-                        isLocked: true,
-                        lockDate: dueDate
-                    });
-                    // Log teacher who didn't submit after midnight
-                    console.log(`[MIDNIGHT LOCK] Teacher locked: ${data.name || 'Unknown'} (ID: ${teacherId}) on ${dueDate}`);
-                } catch (error) {
-                    console.error('Midnight lock failed:', error);
-                } finally {
-                    window.__midnightLockProcessing = false;
-                }
+            // At post-midnight we do not force a client-side lock here. The
+            // backend scheduled job now enforces a 72-hour lockout policy.
+            // Show the overlay and a notifier so the teacher knows they missed
+            // the recent deadline; actual locking will be applied by server.
+            if (isPostMidnight && pendingAtDeadline) {
+                console.log(`[MIDNIGHT LOCK CHECK] Pending submission past deadline for ${data.name || 'Unknown'} (ID: ${teacherId}) on ${dueDate}`);
+                reminderOverlay.style.display = 'flex';
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                return;
             }
         }, (error) => {
             console.error('Reminder listener error:', error);

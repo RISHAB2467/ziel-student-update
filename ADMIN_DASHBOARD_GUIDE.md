@@ -216,6 +216,17 @@ The Admin Dashboard provides comprehensive management of all teacher entries wit
 
 ---
 
+### 9. **Accountability & Lockout (72-hour rule)**
+
+This system enforces an account-level lockout for teachers who fail to submit entries for an extended period.
+
+- **Policy:** If a teacher's last recorded submission date (`lastSubmissionDate`) is older than 72 hours and the teacher is not marked `isOnLeave`, the backend scheduled job will mark the teacher document with `isLocked: true` and record `lockDate`.
+- **Behavior:** Locked teachers cannot access the teacher dashboard and will need an admin to unlock them. Reminders and overlays may notify teachers in the 22:00–00:00 IST window, but the authoritative lock is applied by the server.
+- **Implementation notes:** The lockout job runs daily at 00:00 Asia/Kolkata and evaluates `lastSubmissionDate` (YYYY-MM-DD). This is a date-based approach; timestamps are not required. If you prefer an exact rolling 72-hour policy based on timestamps, the code would be adjusted to store `lastSubmissionTs` and compare epoch milliseconds.
+
+Admin actions: unlock a teacher by setting `isLocked: false` and clearing `lockDate` on the teacher document.
+
+
 ### 8. **Data Fetching & Performance** ✅
 
 **Initial Load:**

@@ -211,6 +211,13 @@ Open browser console and check Firestore:
 - [ ] With 50+ entries, test reports page load time
 - [ ] Test search functionality with large dataset
 
+### Phase 16: Lockout Testing (72-hour rule)
+- [ ] Verify backend marks teacher `isLocked: true` when `lastSubmissionDate` is older than 72 hours and `isOnLeave` is false
+- [ ] Confirm locked teacher cannot access `teacher.html` and sees appropriate overlay/message
+- [ ] Verify admin can unlock teacher by setting `isLocked: false` and clearing `lockDate`
+- [ ] Check reminder notifications in 22:00–00:00 IST window are displayed but do not perform authoritative locking
+
+
 ## Known Issues / Notes
 Document any issues found during testing:
 
