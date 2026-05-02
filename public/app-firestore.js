@@ -666,7 +666,13 @@ window.runReminderEngine = function() {
 
             if (isReminderWindow && pendingAtDeadline) {
                 reminderOverlay.style.display = 'flex';
-                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                if (navigator.vibrate && navigator.userActivation?.isActive) {
+                    try {
+                        navigator.vibrate([200, 100, 200]);
+                    } catch (vibrateError) {
+                        console.debug('Vibration skipped:', vibrateError);
+                    }
+                }
                 return;
             }
 
@@ -679,7 +685,13 @@ window.runReminderEngine = function() {
             if (isPostMidnight && pendingAtDeadline) {
                 console.log(`[MIDNIGHT LOCK CHECK] Pending submission past deadline for ${data.name || 'Unknown'} (ID: ${teacherId}) on ${dueDate}`);
                 reminderOverlay.style.display = 'flex';
-                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                if (navigator.vibrate && navigator.userActivation?.isActive) {
+                    try {
+                        navigator.vibrate([200, 100, 200]);
+                    } catch (vibrateError) {
+                        console.debug('Vibration skipped:', vibrateError);
+                    }
+                }
                 return;
             }
         }, (error) => {
