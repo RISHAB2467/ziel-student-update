@@ -2295,7 +2295,9 @@ window.toggleCentreName = function() {
 
 // Add student
 window.addStudent = async function() {
-    let name = document.getElementById("newStudent").value.trim();
+    let name = document.getElementById("newStudent").value || "";
+    // Normalize unicode, trim and use for checks
+    name = name.normalize ? name.normalize('NFKC').trim() : name.trim();
     const modeRadio = document.querySelector('input[name="studentMode"]:checked');
     const mode = modeRadio ? modeRadio.value : "online";
     const offlineCentreNameInput = document.getElementById("offlineCentreName");
@@ -2308,17 +2310,23 @@ window.addStudent = async function() {
     if (!name) return alert("Enter student name");
 
     try {
-        // Check if student already exists
-        const q = query(collection(db, "students"), where("name", "==", name));
-        const snapshot = await getDocs(q);
+        // Check if student already exists (case-insensitive, normalized)
+        const normalizedLower = (name || '').toLowerCase();
+        const existing = allStudents.find(s => {
+            const sname = s.name || '';
+            const n = sname.normalize ? sname.normalize('NFKC').trim().toLowerCase() : sname.trim().toLowerCase();
+            return n === normalizedLower;
+        });
 
-        if (!snapshot.empty) {
+        if (existing) {
             alert("Student already exists!");
             return;
         }
 
         const studentData = {
             name: name,
+            // for future case-insensitive searches
+            searchName: (name || '').toLowerCase(),
             mode: mode,
             status: "active",
             payType: payType,

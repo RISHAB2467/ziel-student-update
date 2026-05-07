@@ -1172,29 +1172,36 @@
     }
 
     function updateTimeDisplay(field) {
-        let hour, minute, period;
+        let hour12, minute, period;
         if (field === 'timeFrom') {
-            hour = timeFromHour;
+            hour12 = timeFromHour;
             minute = timeFromMinute;
             period = timeFromPeriod;
         } else {
-            hour = timeToHour;
+            hour12 = timeToHour;
             minute = timeToMinute;
             period = timeToPeriod;
         }
-        
-        // Update input displays
-        document.getElementById(field + 'HourInput').value = hour;
-        document.getElementById(field + 'MinuteInput').value = String(minute).padStart(2, '0');
-        
-        // Update hidden field (24-hour format)
-        let hour24 = hour;
-        if (period === 'PM' && hour !== 12) {
-            hour24 += 12;
-        } else if (period === 'AM' && hour === 12) {
+
+        // Ensure minute is valid
+        minute = Number.isFinite(Number(minute)) ? Number(minute) : 0;
+
+        // Compute 24-hour hour from stored 12-hour + period
+        let hour24 = hour12;
+        if (period === 'PM' && hour12 !== 12) {
+            hour24 = hour12 + 12;
+        } else if (period === 'AM' && hour12 === 12) {
             hour24 = 0;
         }
-        
+
+        // Update input displays (show 12-hour in UI fields)
+        document.getElementById(field + 'HourInput').value = hour12;
+        document.getElementById(field + 'MinuteInput').value = String(minute).padStart(2, '0');
+
+        // Set AM/PM button styles
+        if (field === 'timeFrom') setTimeFromPeriod(period); else setTimeToPeriod(period);
+
+        // Hidden field uses 24-hour format
         const timeString = String(hour24).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
         document.getElementById(field).value = timeString;
     }
@@ -1205,12 +1212,36 @@
         if (value === '' || value === null || typeof value === 'undefined') return;
         let num = parseInt(value, 10);
         if (isNaN(num)) return;
-
         if (type === 'hour') {
-            if (num < 1) num = 1;
-            if (num > 12) num = 12;
-            if (field === 'timeFrom') timeFromHour = num;
-            else timeToHour = num;
+            // Allow 24-hour numeric input: 0-23 or 1-12
+            if (num < 0) num = 0;
+            if (num > 23) num = 23;
+
+            // Convert to internal 12-hour display + period
+            let displayHour = num;
+            let period = 'AM';
+            if (num === 0) {
+                displayHour = 12;
+                period = 'AM';
+            } else if (num === 12) {
+                displayHour = 12;
+                period = 'PM';
+            } else if (num > 12) {
+                displayHour = num - 12;
+                period = 'PM';
+            } else {
+                // 1-11
+                displayHour = num;
+                period = 'AM';
+            }
+
+            if (field === 'timeFrom') {
+                timeFromHour = displayHour;
+                timeFromPeriod = period;
+            } else {
+                timeToHour = displayHour;
+                timeToPeriod = period;
+            }
         } else {
             if (num < 0) num = 0;
             if (num > 59) num = 59;
