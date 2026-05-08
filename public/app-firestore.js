@@ -741,32 +741,36 @@ window.syncAccountabilityCycle = async function() {
     }
 
     const today = getKolkataDateISO();
-    const yesterday = getKolkataDateWithOffsetISO(-1);
     const settingsRef = doc(db, 'settings', 'cycle_config');
     const settingsDoc = await getDoc(settingsRef);
 
     if (!settingsDoc.exists() || settingsDoc.data().lastResetDate !== today) {
         const batch = writeBatch(db);
         const teachersSnap = await getDocs(collection(db, 'teachers'));
-        const submittedSnapshot = await getDocs(query(collection(db, 'entries'), where('date', '==', yesterday)));
-        const submittedTeacherKeys = new Set();
-
-        submittedSnapshot.forEach((entryDoc) => {
-            const entryData = entryDoc.data() || {};
-            if (entryData.teacherId) {
-                submittedTeacherKeys.add(`id:${String(entryData.teacherId)}`);
-            }
-            if (entryData.teacherName) {
-                submittedTeacherKeys.add(`name:${String(entryData.teacherName).trim().toLowerCase()}`);
-            }
-        });
 
         teachersSnap.forEach((tDoc) => {
             const data = tDoc.data() || {};
-            const teacherKey = `id:${tDoc.id}`;
-            const teacherNameKey = data.name ? `name:${String(data.name).trim().toLowerCase()}` : null;
-            const submittedYesterday = submittedTeacherKeys.has(teacherKey) || (teacherNameKey ? submittedTeacherKeys.has(teacherNameKey) : false);
-            const shouldLock = !submittedYesterday && !data.isOnLeave;
+            const lastSubmissionDateStr = data.lastSubmissionDate || null;
+            let shouldLock = false;
+
+            if (!lastSubmissionDateStr) {
+                shouldLock = !data.isOnLeave;
+            } else {
+                const parts = String(lastSubmissionDateStr).split('-');
+                if (parts.length === 3) {
+                    const [y, m, d] = parts.map(Number);
+                    const now = new Date();
+                    const utcMs = now.getTime() + (now.getTimezoneOffset() * 60000);
+                    const kolkataMs = utcMs + (5.5 * 60 * 60 * 1000);
+                    const lastSubmissionUtcMs = Date.UTC(y, m - 1, d) - (5.5 * 60 * 60 * 1000);
+                    const lastSubmissionKolkataMs = lastSubmissionUtcMs + (5.5 * 60 * 60 * 1000);
+                    const ageMs = kolkataMs - lastSubmissionKolkataMs;
+                    const thresholdMs = 72 * 60 * 60 * 1000;
+                    shouldLock = (ageMs > thresholdMs) && !data.isOnLeave;
+                } else {
+                    shouldLock = !data.isOnLeave;
+                }
+            }
 
             batch.update(tDoc.ref, {
                 isLocked: shouldLock,
