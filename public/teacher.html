@@ -720,24 +720,19 @@
 
                 <!-- Time From -->
                 <div class="form-group">
-                    <label>Time From</label>
+                    <label>Time From (24-hour format)</label>
                     <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
                         <div style="display: flex; gap: 8px; background: #f0f0f0; padding: 8px; border-radius: 12px; align-items: center;">
-                            <!-- Hour picker with up/down -->
+                            <!-- Hour picker -->
                             <div style="display: flex; flex-direction: column; align-items: center;">
-                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeFromHourInput" value="9" min="1" max="12" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeFrom','hour', this.value)">
+                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeFromHourInput" value="09" min="0" max="23" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeFrom','hour', this.value)">
                             </div>
                             
                             <span style="font-size: 24px; font-weight: bold; color: #666;">:</span>
                             
-                            <!-- Minute picker with up/down -->
+                            <!-- Minute picker -->
                             <div style="display: flex; flex-direction: column; align-items: center;">
-                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeFromMinuteInput" value="0" min="0" max="59" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeFrom','minute', this.value)">
-                            </div>
-                            
-                            <div style="display: flex; flex-direction: column; gap: 2px; margin-left: 4px;">
-                                <button type="button" onclick="setTimeFromPeriod('AM')" id="timeFromAM" style="padding: 6px 12px; background: #007AFF; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">AM</button>
-                                <button type="button" onclick="setTimeFromPeriod('PM')" id="timeFromPM" style="padding: 6px 12px; background: #E5E5EA; color: #8E8E93; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">PM</button>
+                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeFromMinuteInput" value="00" min="0" max="59" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeFrom','minute', this.value)">
                             </div>
                         </div>
                     </div>
@@ -746,24 +741,19 @@
 
                 <!-- Time To -->
                 <div class="form-group">
-                    <label>Time To</label>
+                    <label>Time To (24-hour format)</label>
                     <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
                         <div style="display: flex; gap: 8px; background: #f0f0f0; padding: 8px; border-radius: 12px; align-items: center;">
-                            <!-- Hour picker with up/down -->
+                            <!-- Hour picker -->
                             <div style="display: flex; flex-direction: column; align-items: center;">
-                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeToHourInput" value="10" min="1" max="12" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeTo','hour', this.value)">
+                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeToHourInput" value="10" min="0" max="23" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeTo','hour', this.value)">
                             </div>
                             
                             <span style="font-size: 24px; font-weight: bold; color: #666;">:</span>
                             
-                            <!-- Minute picker with up/down -->
+                            <!-- Minute picker -->
                             <div style="display: flex; flex-direction: column; align-items: center;">
-                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeToMinuteInput" value="0" min="0" max="59" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeTo','minute', this.value)">
-                            </div>
-                            
-                            <div style="display: flex; flex-direction: column; gap: 2px; margin-left: 4px;">
-                                <button type="button" onclick="setTimeToPeriod('AM')" id="timeToAM" style="padding: 6px 12px; background: #007AFF; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">AM</button>
-                                <button type="button" onclick="setTimeToPeriod('PM')" id="timeToPM" style="padding: 6px 12px; background: #E5E5EA; color: #8E8E93; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">PM</button>
+                                <input inputmode="numeric" pattern="[0-9]*" type="number" id="timeToMinuteInput" value="00" min="0" max="59" style="width: 80px; padding: 8px 6px; font-size: 20px; font-weight: bold; text-align: center; border: none; background: white; margin: 0;" oninput="onManualTimeInput('timeTo','minute', this.value)">
                             </div>
                         </div>
                     </div>
@@ -1095,13 +1085,11 @@
         }
     });
 
-    // Time picker variables
+    // Time picker variables (24-hour format)
     let timeFromHour = 9;
     let timeFromMinute = 0;
-    let timeFromPeriod = 'AM';
     let timeToHour = 10;
     let timeToMinute = 0;
-    let timeToPeriod = 'AM';
     let adjustInterval = null;
 
     // Initialize on load
@@ -1131,12 +1119,12 @@
         if (type === 'hour') {
             if (field === 'timeFrom') {
                 timeFromHour += direction;
-                if (timeFromHour > 12) timeFromHour = 1;
-                if (timeFromHour < 1) timeFromHour = 12;
+                if (timeFromHour > 23) timeFromHour = 0;
+                if (timeFromHour < 0) timeFromHour = 23;
             } else {
                 timeToHour += direction;
-                if (timeToHour > 12) timeToHour = 1;
-                if (timeToHour < 1) timeToHour = 12;
+                if (timeToHour > 23) timeToHour = 0;
+                if (timeToHour < 0) timeToHour = 23;
             }
         } else {
             if (field === 'timeFrom') {
@@ -1153,79 +1141,31 @@
         updateTimeDisplay(field);
     }
 
-    function setTimeFromPeriod(period) {
-        timeFromPeriod = period;
-        document.getElementById('timeFromAM').style.background = period === 'AM' ? '#007AFF' : '#E5E5EA';
-        document.getElementById('timeFromAM').style.color = period === 'AM' ? 'white' : '#8E8E93';
-        document.getElementById('timeFromPM').style.background = period === 'PM' ? '#007AFF' : '#E5E5EA';
-        document.getElementById('timeFromPM').style.color = period === 'PM' ? 'white' : '#8E8E93';
-        updateTimeDisplay('timeFrom');
-    }
 
-    function setTimeToPeriod(period) {
-        timeToPeriod = period;
-        document.getElementById('timeToAM').style.background = period === 'AM' ? '#007AFF' : '#E5E5EA';
-        document.getElementById('timeToAM').style.color = period === 'AM' ? 'white' : '#8E8E93';
-        document.getElementById('timeToPM').style.background = period === 'PM' ? '#007AFF' : '#E5E5EA';
-        document.getElementById('timeToPM').style.color = period === 'PM' ? 'white' : '#8E8E93';
-        updateTimeDisplay('timeTo');
-    }
 
     function updateTimeDisplay(field) {
-        let hour12, minute, period;
+        let hour24, minute;
         if (field === 'timeFrom') {
-            hour12 = timeFromHour;
+            hour24 = timeFromHour;
             minute = timeFromMinute;
-            period = timeFromPeriod;
         } else {
-            hour12 = timeToHour;
+            hour24 = timeToHour;
             minute = timeToMinute;
-            period = timeToPeriod;
         }
 
-        // Ensure minute is valid
+        // Ensure values are valid
+        hour24 = Number.isFinite(Number(hour24)) ? Number(hour24) : 0;
         minute = Number.isFinite(Number(minute)) ? Number(minute) : 0;
 
-        // Compute 24-hour hour from stored 12-hour + period
-        let hour24 = hour12;
-        if (period === 'PM' && hour12 !== 12) {
-            hour24 = hour12 + 12;
-        } else if (period === 'AM' && hour12 === 12) {
-            hour24 = 0;
-        }
+        // Clamp to valid ranges
+        if (hour24 < 0) hour24 = 0;
+        if (hour24 > 23) hour24 = 23;
+        if (minute < 0) minute = 0;
+        if (minute > 59) minute = 59;
 
-        // Update input displays (show 12-hour in UI fields)
-        document.getElementById(field + 'HourInput').value = hour12;
+        // Update input displays (24-hour format)
+        document.getElementById(field + 'HourInput').value = String(hour24).padStart(2, '0');
         document.getElementById(field + 'MinuteInput').value = String(minute).padStart(2, '0');
-
-        // Set AM/PM button styles directly (avoid calling setTimeFromPeriod/setTimeToPeriod to prevent recursion)
-        try {
-            if (field === 'timeFrom') {
-                const fromAM = document.getElementById('timeFromAM');
-                const fromPM = document.getElementById('timeFromPM');
-                if (fromAM) {
-                    fromAM.style.background = period === 'AM' ? '#007AFF' : '#E5E5EA';
-                    fromAM.style.color = period === 'AM' ? 'white' : '#8E8E93';
-                }
-                if (fromPM) {
-                    fromPM.style.background = period === 'PM' ? '#007AFF' : '#E5E5EA';
-                    fromPM.style.color = period === 'PM' ? 'white' : '#8E8E93';
-                }
-            } else {
-                const toAM = document.getElementById('timeToAM');
-                const toPM = document.getElementById('timeToPM');
-                if (toAM) {
-                    toAM.style.background = period === 'AM' ? '#007AFF' : '#E5E5EA';
-                    toAM.style.color = period === 'AM' ? 'white' : '#8E8E93';
-                }
-                if (toPM) {
-                    toPM.style.background = period === 'PM' ? '#007AFF' : '#E5E5EA';
-                    toPM.style.color = period === 'PM' ? 'white' : '#8E8E93';
-                }
-            }
-        } catch (e) {
-            // Ignore DOM errors during initialization
-        }
 
         // Hidden field uses 24-hour format
         const timeString = String(hour24).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
@@ -1234,45 +1174,29 @@
 
     // Handle manual numeric input for hour/minute fields
     function onManualTimeInput(field, type, value) {
-        // normalize empty
+        // Normalize empty
         if (value === '' || value === null || typeof value === 'undefined') return;
         let num = parseInt(value, 10);
         if (isNaN(num)) return;
+        
         if (type === 'hour') {
-            // Allow 24-hour numeric input: 0-23 or 1-12
+            // Clamp to 24-hour format (0-23)
             if (num < 0) num = 0;
             if (num > 23) num = 23;
-
-            // Convert to internal 12-hour display + period
-            let displayHour = num;
-            let period = 'AM';
-            if (num === 0) {
-                displayHour = 12;
-                period = 'AM';
-            } else if (num === 12) {
-                displayHour = 12;
-                period = 'PM';
-            } else if (num > 12) {
-                displayHour = num - 12;
-                period = 'PM';
-            } else {
-                // 1-11
-                displayHour = num;
-                period = 'AM';
-            }
-
             if (field === 'timeFrom') {
-                timeFromHour = displayHour;
-                timeFromPeriod = period;
+                timeFromHour = num;
             } else {
-                timeToHour = displayHour;
-                timeToPeriod = period;
+                timeToHour = num;
             }
-        } else {
+        } else if (type === 'minute') {
+            // Clamp to 0-59
             if (num < 0) num = 0;
             if (num > 59) num = 59;
-            if (field === 'timeFrom') timeFromMinute = num;
-            else timeToMinute = num;
+            if (field === 'timeFrom') {
+                timeFromMinute = num;
+            } else {
+                timeToMinute = num;
+            }
         }
 
         // Update display and hidden value
