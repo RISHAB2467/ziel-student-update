@@ -4356,9 +4356,35 @@ function displayAdminEntries() {
             <td style="padding: 12px 8px;">
                 <strong style="color: #2c3e50;">${studentName}</strong>
             </td>
-            <td style="padding: 12px 8px; white-space: nowrap;">
-                ${entry.timeFrom || entry.startTime || 'N/A'} - ${entry.timeTo || entry.endTime || 'N/A'}
-            </td>
+                <td style="padding: 12px 8px; white-space: nowrap;">
+                    ${(() => {
+                        // Helper to get HH:MM from Date or Firestore Timestamp
+                        const fmt = (val) => {
+                            try {
+                                if (!val && val !== 0) return null;
+                                let d = null;
+                                if (val && typeof val.toDate === 'function') d = val.toDate();
+                                else if (val instanceof Date) d = val;
+                                else if (typeof val === 'string') {
+                                    // Accept formats like 'HH:MM' or 'HH:MM:SS' or 'YYYY-MM-DDTHH:MM:SS...'
+                                    const m = val.match(/(\d{1,2}:\d{2})/);
+                                    if (m) return m[1];
+                                    return val || null;
+                                }
+                                if (!d) return null;
+                                return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+                            } catch (e) { return null; }
+                        };
+
+                        const candidatesFrom = [entry.timeFrom, entry.startTime, entry.time, entry.createdAt];
+                        const candidatesTo = [entry.timeTo, entry.endTime, entry.time, entry.createdAt];
+
+                        const from = candidatesFrom.map(fmt).find(v => v) || 'N/A';
+                        const to = candidatesTo.map(fmt).find(v => v) || 'N/A';
+
+                        return `${from} - ${to}`;
+                    })()}
+                </td>
             <td style="padding: 12px 8px; text-align: center;">
                 <span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 3px; font-weight: bold;">${entry.classCount || 'N/A'}</span>
             </td>
