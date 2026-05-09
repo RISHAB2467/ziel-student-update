@@ -2454,6 +2454,123 @@ window.saveStudentEdit = async function(id) {
     }
 }
 
+// Open edit student details modal
+window.openEditStudentModal = function(id, currentName, currentMode, offlineCentreName) {
+    const modal = document.getElementById('editStudentModal');
+    if (!modal) {
+        console.error('Edit student modal not found');
+        return;
+    }
+    
+    document.getElementById('editStudentId').value = id;
+    document.getElementById('editStudentName').value = currentName;
+    document.getElementById('editStudentMode').value = currentMode;
+    
+    const centreNameInput = document.getElementById('editStudentCentreName');
+    if (centreNameInput) {
+        centreNameInput.value = offlineCentreName || '';
+        centreNameInput.style.display = currentMode === 'offline' ? 'block' : 'none';
+    }
+    
+    modal.style.display = 'flex';
+}
+
+// Close edit student modal
+window.closeEditStudentModal = function() {
+    const modal = document.getElementById('editStudentModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Handle student mode change in modal
+window.handleStudentModeChange = function() {
+    const mode = document.getElementById('editStudentMode').value;
+    const centreNameInput = document.getElementById('editStudentCentreName');
+    if (centreNameInput) {
+        centreNameInput.style.display = mode === 'offline' ? 'block' : 'none';
+    }
+}
+
+// Save student details from modal
+window.saveStudentDetails = async function() {
+    const id = document.getElementById('editStudentId').value;
+    let newName = document.getElementById('editStudentName').value.trim();
+    const newMode = document.getElementById('editStudentMode').value;
+    const centreNameInput = document.getElementById('editStudentCentreName');
+    const newCentreName = centreNameInput ? centreNameInput.value.trim() : '';
+    
+    if (!newName) {
+        alert('Student name cannot be empty');
+        return;
+    }
+    
+    // Normalize the name
+    newName = newName.normalize ? newName.normalize('NFKC').trim() : newName.trim();
+    
+    try {
+        const currentStudent = allStudents.find(s => s.id === id);
+        if (!currentStudent) {
+            alert('Student not found');
+            return;
+        }
+        
+        // Check if new name already exists (case-insensitive, excluding current student)
+        const normalizedLower = newName.toLowerCase();
+        const exists = allStudents.find(s => {
+            if (s.id === id) return false; // Exclude current student
+            const sname = s.name || '';
+            const n = sname.normalize ? sname.normalize('NFKC').trim().toLowerCase() : sname.trim().toLowerCase();
+            return n === normalizedLower;
+        });
+        
+        if (exists) {
+            alert('A student with this name already exists');
+            return;
+        }
+        
+        const updateData = {
+            name: newName,
+            searchName: newName.toLowerCase(),
+            mode: newMode
+        };
+        
+        // Handle centre name for offline students
+        if (newMode === 'offline' && newCentreName) {
+            updateData.offlineCentreName = newCentreName;
+        } else if (newMode === 'online') {
+            // Remove centre name if switching to online
+            updateData.offlineCentreName = '';
+        }
+        
+        const docRef = doc(db, 'students', id);
+        await updateDoc(docRef, updateData);
+        
+        // Update local data
+        if (currentStudent) {
+            currentStudent.name = newName;
+            currentStudent.searchName = newName.toLowerCase();
+            currentStudent.mode = newMode;
+            if (newMode === 'offline' && newCentreName) {
+                currentStudent.offlineCentreName = newCentreName;
+            } else if (newMode === 'online') {
+                currentStudent.offlineCentreName = '';
+            }
+        }
+        
+        // Reload the student list to reflect changes
+        const studentList = document.getElementById('studentList');
+        if (studentList) {
+            displayStudents(allStudents);
+        }
+        
+        // Close modal
+        window.closeEditStudentModal();
+        alert('Student details updated successfully!');
+    } catch (error) {
+        console.error('Error saving student details:', error);
+        alert('Error saving changes. Check console.');
+    }
+}
+
 // Update student field (for inline editing)
 window.updateStudentField = async function(id, field, value) {
     try {
@@ -2977,7 +3094,8 @@ function displayStudents(filtered) {
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </td>
                 <td style="text-align: center;">
-                    <button id="edit-btn-${s.id}" class="toggle-btn activate" onclick="enableStudentEdit('${s.id}', '${s.payType || ''}', '${s.sub || ''}')" style="margin-right: 4px;">Edit</button>
+                    <button onclick="openEditStudentModal('${s.id}', '${s.name}', '${s.mode || 'online'}', '${s.offlineCentreName || ''}')" style="padding: 6px 12px; background: #007AFF; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 4px; font-size: 12px;">Edit Details</button>
+                    <button id="edit-btn-${s.id}" class="toggle-btn activate" onclick="enableStudentEdit('${s.id}', '${s.payType || ''}', '${s.sub || ''}')" style="margin-right: 4px;">Edit Pay</button>
                     <button id="save-btn-${s.id}" class="toggle-btn" onclick="saveStudentEdit('${s.id}')" style="display: none; margin-right: 4px; background: #48bb78;">OK</button>
                     <button class="toggle-btn ${toggleBtnClass}" onclick="toggleStudentStatus('${s.id}')">${toggleBtnText}</button>
                     <button class="delete-btn" onclick="deleteStudent('${s.id}')">Delete</button>
