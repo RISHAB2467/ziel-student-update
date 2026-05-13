@@ -196,32 +196,47 @@
         /* Tabs */
         .tab-container {
             display: flex;
-            gap: 8px;
+            gap: 10px;
             margin-bottom: 24px;
-            border-bottom: 1px solid #e8eaed;
+            padding: 10px;
+            border: 1px solid rgba(229, 231, 235, 0.8);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.72);
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+            backdrop-filter: blur(12px);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .tab-btn {
-            background: transparent;
-            border: none;
-            padding: 12px 24px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 12px 22px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
-            color: #666666;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
+            color: #374151;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+            transition: all 0.3s ease-in-out;
             font-family: 'Roboto', sans-serif;
         }
 
         .tab-btn:hover {
-            color: #d4af37;
-            background: rgba(212, 175, 55, 0.1);
+            color: #166534;
+            background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+            border-color: #86efac;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(34, 197, 94, 0.12);
         }
 
         .tab-btn.active {
-            color: #d4af37;
-            border-bottom-color: #d4af37;
+            color: white;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border-color: #16a34a;
+            box-shadow: 0 10px 22px rgba(34, 197, 94, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+            transform: translateY(-1px);
         }
 
         .tab-content {
@@ -622,6 +637,7 @@
 
             .tab-container {
                 flex-direction: column;
+                padding: 8px;
             }
 
             .tab-btn {
@@ -765,13 +781,13 @@
 
         <!-- TAB NAVIGATION -->
         <div class="tab-container">
-            <button class="tab-btn active" onclick="showTab('accountability')">Accountability Monitor</button>
-            <button class="tab-btn" onclick="showTab('teachers')">Manage Teachers</button>
-            <button class="tab-btn" onclick="showTab('students')">Manage Students</button>
-            <button class="tab-btn" onclick="showTab('entries')">View All Entries</button>
-            <button class="tab-btn" onclick="showTab('reports')">Student Reports</button>
-            <button class="tab-btn" onclick="showTab('classesdata')">Classes Data</button>
-            <button class="tab-btn" onclick="showTab('doubtsessions')">Doubt/Demo Sessions</button>
+            <button class="tab-btn active" data-tab="accountability" onclick="showTab('accountability', this)">Accountability Monitor</button>
+            <button class="tab-btn" data-tab="teachers" onclick="showTab('teachers', this)">Manage Teachers</button>
+            <button class="tab-btn" data-tab="students" onclick="showTab('students', this)">Manage Students</button>
+            <button class="tab-btn" data-tab="entries" onclick="showTab('entries', this)">View All Entries</button>
+            <button class="tab-btn" data-tab="reports" onclick="showTab('reports', this)">Student Reports</button>
+            <button class="tab-btn" data-tab="classesdata" onclick="showTab('classesdata', this)">Classes Data</button>
+            <button class="tab-btn" data-tab="doubtsessions" onclick="showTab('doubtsessions', this)">Doubt/Demo Sessions</button>
         </div>
 
         <!-- SECTION 0: Accountability Monitor -->

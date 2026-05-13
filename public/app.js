@@ -462,24 +462,29 @@ function loadAdminLists() {
     filterStudents();
 }
 
-function showTab(tabName) {
-    // Hide all tabs
+function showTab(tabName, buttonElement) {
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.style.display = 'none';
     });
-    
-    // Remove active class from all buttons
+
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    
-    // Show selected tab
-    document.getElementById(tabName + '-tab').style.display = 'block';
-    
-    // Add active class to clicked button
-    event.target.classList.add('active');
-    
-    // Load payment students when payment tab is opened
+
+    const targetTab = document.getElementById(tabName + '-tab');
+    if (targetTab) {
+        targetTab.style.display = 'block';
+    }
+
+    if (buttonElement) {
+        buttonElement.classList.add('active');
+    } else {
+        const matchedButton = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+        if (matchedButton) {
+            matchedButton.classList.add('active');
+        }
+    }
+
     if (tabName === 'payments' && typeof window.loadPaymentStudents === 'function') {
         window.loadPaymentStudents();
     }
