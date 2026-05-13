@@ -995,13 +995,6 @@ window.loadAccountabilityTracker = async function() {
                 badgeWrap.appendChild(badge);
             }
 
-            if (!teacher.isLocked && !teacher.isOnLeave && !teacher.submittedYesterday) {
-                const badge = document.createElement('span');
-                badge.className = 'badge-neutral';
-                badge.textContent = 'NO SUBMISSION';
-                badgeWrap.appendChild(badge);
-            }
-
             nameWrap.appendChild(badgeWrap);
             infoDiv.appendChild(nameWrap);
 
