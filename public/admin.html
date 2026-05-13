@@ -792,7 +792,7 @@
                     </div>
                 </div>
                 <div id="accountabilityBody" class="accountability-body accountability-collapsed">
-                    <p class="accountability-subtitle">Teachers who have not submitted data for the selected date.</p>
+                    <p class="accountability-subtitle">Teachers who have not submitted data for the selected date, plus anyone marked on leave today.</p>
                     <div id="absent-list" class="admin-list-container accountability-list-scroll">
                         <div class="loading-spinner">Checking database...</div>
                     </div>
@@ -877,14 +877,12 @@
                         <th style="width: 60px;">SL NO</th>
                         <th>Student Name</th>
                         <th style="text-align: center;">Mode</th>
-                        <th style="text-align: center;">Pay Type</th>
-                        <th style="text-align: center;">Sub</th>
                         <th style="text-align: center;">Status</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="studentList">
-                    <tr><td colspan="7" class="empty-state">Loading students...</td></tr>
+                    <tr><td colspan="5" class="empty-state">Loading students...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1460,6 +1458,22 @@
                 <div style="display: grid; gap: 5px;">
                     <label style="font-weight: 600; color: #333;">Centre Name (Offline Only)</label>
                     <input type="text" id="editStudentCentreName" placeholder="Enter centre name" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Roboto', sans-serif; display: none;">
+                </div>
+                
+                <div style="display: grid; gap: 5px;">
+                    <label style="font-weight: 600; color: #333;">Pay Type</label>
+                    <select id="editStudentPayType" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Roboto', sans-serif;">
+                        <option value="">-</option>
+                        <option value="full-time">Full-Time</option>
+                        <option value="part-time">Part-Time</option>
+                        <option value="lump sum">Lump Sum</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                
+                <div style="display: grid; gap: 5px;">
+                    <label style="font-weight: 600; color: #333;">Subject</label>
+                    <input type="text" id="editStudentSub" placeholder="Enter subject" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Roboto', sans-serif;">
                 </div>
                 
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">

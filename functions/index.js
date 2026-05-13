@@ -56,11 +56,19 @@ function isLockoutExempt(data) {
  * 1) Fetch all active teachers.
  * 2) If lastSubmissionDate is older than 72 hours AND isOnLeave == false => set isLocked = true.
  * 3) Reset hasSubmittedToday and isOnLeave for everyone for the new day.
+ * 
+ * Cost Optimization:
+ * - Memory: 128MB (optimal for batch operations)
+ * - Timeout: 60 seconds (prevents excessive billing)
+ * - Execution time logged for cost tracking
  */
-exports.midnightLockout = onSchedule({
+exports.imidnightLockout = onSchedule({
   schedule: "0 0 * * *",
   timeZone: "Asia/Kolkata",
+  memory: "128MB",
+  timeoutSeconds: 60
 }, async () => {
+    const functionStartTime = Date.now();
     const todayKolkata = getKolkataDateISO(0);
     const yesterdayKolkata = getKolkataDateISO(-1);
     const cycleRef = db.collection("settings").doc("cycle_config");
@@ -199,14 +207,32 @@ exports.midnightLockout = onSchedule({
       lastProcessedTeachers: processedCount,
     }, { merge: true });
 
+    const executionTimeMs = Date.now() - functionStartTime;
+    const executionTimeSec = (executionTimeMs / 1000).toFixed(2);
+    const estimatedCost = (executionTimeSec * 0.0000041).toFixed(6);
+    
     console.log(`Midnight Sync Complete. Processed: ${processedCount}, Locked: ${lockedCount}, Exempt: ${exemptCount}`);
+    console.log(`[COST TRACKING] Execution: ${executionTimeSec}s | Estimated Cost: $${estimatedCost}`);
     return null;
 });
 
+/**
+ * Scheduled Function: Escalating Nagging Reminders
+ * Runs 3 times daily at 22:30, 23:00, 23:30 Asia/Kolkata time.
+ * Sends push notifications to remind teachers to fill class data.
+ * 
+ * Cost Optimization:
+ * - Memory: 128MB (minimal for notification sending)
+ * - Timeout: 30 seconds (notifications are quick)
+ * - Only sends to teachers with valid tokens (reduces computation)
+ */
 exports.escalatingNaggingReminders = onSchedule({
   schedule: "0,30 22,23 * * *",
   timeZone: "Asia/Kolkata",
+  memory: "128MB",
+  timeoutSeconds: 30
 }, async () => {
+    const functionStartTime = Date.now();
     const now = new Date();
     const todayKolkata = getKolkataDateISO(0);
     const kolkataTime = new Intl.DateTimeFormat("en-GB", {
@@ -315,6 +341,11 @@ exports.escalatingNaggingReminders = onSchedule({
     } else {
       console.log(`No eligible teachers with device tokens. Active teachers scanned: ${snapshot.size}`);
     }
+
+    const executionTimeMs = Date.now() - functionStartTime;
+    const executionTimeSec = (executionTimeMs / 1000).toFixed(2);
+    const estimatedCost = (executionTimeSec * 0.0000041).toFixed(6);
+    console.log(`[COST TRACKING] Execution: ${executionTimeSec}s | Estimated Cost: $${estimatedCost}`);
 
     return null;
   });

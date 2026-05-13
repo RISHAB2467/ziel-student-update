@@ -608,6 +608,19 @@ window.runReminderEngine = function() {
             const isReminderWindow = hour >= 22 && hour <= 23;
             const isPostMidnight = hour === 0;
             const pendingAtDeadline = !submittedDueDate && !data.isOnLeave;
+            const leaveStatus = document.getElementById('leaveStatus');
+            const leaveBtn = document.getElementById('leaveBtn');
+
+            if (leaveStatus) {
+                leaveStatus.textContent = data.isOnLeave ? 'Status: On Leave Today' : '';
+            }
+
+            if (leaveBtn) {
+                leaveBtn.textContent = data.isOnLeave ? 'On Leave Today' : 'I am on Leave Today';
+                leaveBtn.disabled = data.isOnLeave === true;
+                leaveBtn.style.opacity = data.isOnLeave ? '0.7' : '1';
+                leaveBtn.style.cursor = data.isOnLeave ? 'default' : 'pointer';
+            }
 
             if (data.isLocked) {
                 reminderOverlay.style.display = 'none';
@@ -715,13 +728,28 @@ window.markTeacherOnLeave = async function() {
     if (!confirm('Are you on leave today? This will prevent account lockout at midnight.')) return;
 
     try {
+        const leaveDate = getKolkataDateISO();
         await updateDoc(doc(db, 'teachers', teacherId), {
             isOnLeave: true,
-            hasSubmittedToday: false
+            isLocked: false,
+            lockDate: null,
+            hasSubmittedToday: false,
+            leaveDate,
+            lastResetAt: serverTimestamp()
         });
+        window.__teacherForcedLockoutInProgress = false;
         const reminderOverlay = document.getElementById('statusOverlay');
         if (reminderOverlay) reminderOverlay.style.display = 'none';
-        alert('Status: On Leave. Overlay hidden.');
+        const leaveStatus = document.getElementById('leaveStatus');
+        if (leaveStatus) leaveStatus.textContent = 'Status: On Leave Today';
+        const leaveBtn = document.getElementById('leaveBtn');
+        if (leaveBtn) {
+            leaveBtn.textContent = 'On Leave Today';
+            leaveBtn.disabled = true;
+            leaveBtn.style.opacity = '0.7';
+            leaveBtn.style.cursor = 'default';
+        }
+        alert('Status: On Leave. You will stay logged in for today.');
     } catch (error) {
         console.error('Error marking leave:', error);
         alert('Error updating leave status. Please try again.');
@@ -836,6 +864,7 @@ window.loadAccountabilityTracker = async function() {
 
         const { hour } = getKolkataTimeParts();
         const isPreMidnight = hour >= 1 && hour <= 23;
+        const teacherRows = [];
 
         if (latestTeacherSnapshot.empty) {
             absentListDiv.innerHTML = "<p class='status-success'>No active teachers found.</p>";
@@ -849,39 +878,140 @@ window.loadAccountabilityTracker = async function() {
             const teacherNameKey = teacher.name ? `name:${String(teacher.name).trim().toLowerCase()}` : null;
             const submittedYesterday = submittedTeacherKeys.has(teacherKey) || (teacherNameKey ? submittedTeacherKeys.has(teacherNameKey) : false);
             const isLocked = teacher.isLocked || false;
+            const isOnLeave = teacher.isOnLeave === true;
 
+            teacherRows.push({
+                teacherId,
+                name: teacher.name || 'Unnamed Teacher',
+                isLocked,
+                isOnLeave,
+                submittedYesterday,
+            });
+        });
+
+        const onLeaveTeachers = teacherRows.filter((teacher) => teacher.isOnLeave);
+        const pendingTeachers = teacherRows.filter((teacher) => !teacher.submittedYesterday && !teacher.isOnLeave);
+
+        const renderSectionTitle = (title, count, color) => {
+            const titleEl = document.createElement('div');
+            titleEl.style.cssText = `font-size: 13px; font-weight: 700; color: ${color}; margin: 6px 0 2px; text-transform: uppercase; letter-spacing: 0.4px;`;
+            titleEl.textContent = `${title} (${count})`;
+            return titleEl;
+        };
+
+        const renderTeacherRow = (teacher) => {
             const row = document.createElement('div');
             row.className = 'teacher-status-row';
 
             const infoDiv = document.createElement('div');
             infoDiv.className = 'teacher-info';
 
-            const nameEl = document.createElement('strong');
-            nameEl.textContent = teacher.name || 'Unnamed Teacher';
-            infoDiv.appendChild(nameEl);
+            const nameWrap = document.createElement('div');
+            nameWrap.style.display = 'flex';
+            nameWrap.style.flexDirection = 'column';
+            nameWrap.style.gap = '6px';
 
-            const effectiveLocked = isLocked;
-            if (effectiveLocked) {
+            const nameEl = document.createElement('strong');
+            nameEl.textContent = teacher.name;
+            nameWrap.appendChild(nameEl);
+
+            const badgeWrap = document.createElement('div');
+            badgeWrap.style.display = 'flex';
+            badgeWrap.style.flexWrap = 'wrap';
+            badgeWrap.style.gap = '8px';
+
+            if (teacher.isLocked) {
                 const badge = document.createElement('span');
                 badge.className = 'badge-locked';
                 badge.textContent = 'LOCKED';
-                infoDiv.appendChild(badge);
+                badgeWrap.appendChild(badge);
             }
+
+            if (teacher.isOnLeave) {
+                const badge = document.createElement('span');
+                badge.className = 'badge-leave';
+                badge.textContent = 'ON LEAVE TODAY';
+                badgeWrap.appendChild(badge);
+            }
+
+            if (!teacher.isLocked && !teacher.isOnLeave && teacher.submittedYesterday) {
+                const badge = document.createElement('span');
+                badge.className = 'status-success';
+                badge.style.display = 'inline-block';
+                badge.style.padding = '4px 10px';
+                badge.style.fontSize = '11px';
+                badge.style.borderRadius = '4px';
+                badge.textContent = 'SUBMITTED';
+                badgeWrap.appendChild(badge);
+            }
+
+            if (!teacher.isLocked && !teacher.isOnLeave && !teacher.submittedYesterday) {
+                const badge = document.createElement('span');
+                badge.className = 'badge-locked';
+                badge.style.background = '#fff8e1';
+                badge.style.color = '#a15c00';
+                badge.style.borderColor = '#ffd666';
+                badge.textContent = 'PENDING';
+                badgeWrap.appendChild(badge);
+            }
+
+            nameWrap.appendChild(badgeWrap);
+            infoDiv.appendChild(nameWrap);
 
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'teacher-actions';
 
-            const btn = document.createElement('button');
-            btn.className = 'btn-restore';
-            btn.type = 'button';
-            btn.textContent = effectiveLocked ? 'Unlock and Continue' : (submittedYesterday ? 'Submitted' : 'Mark as Excused');
-            btn.onclick = () => window.restoreTeacherAccess(teacherId);
-            actionsDiv.appendChild(btn);
+            if (teacher.isOnLeave) {
+                const leaveNote = document.createElement('span');
+                leaveNote.className = 'status-success';
+                leaveNote.style.display = 'inline-block';
+                leaveNote.textContent = 'No action needed';
+                actionsDiv.appendChild(leaveNote);
+            } else if (teacher.isLocked) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-restore';
+                btn.type = 'button';
+                btn.textContent = 'Unlock and Continue';
+                btn.onclick = () => window.restoreTeacherAccess(teacher.teacherId);
+                actionsDiv.appendChild(btn);
+            } else if (!teacher.submittedYesterday) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-restore';
+                btn.type = 'button';
+                btn.textContent = 'Mark as Excused';
+                btn.onclick = () => window.restoreTeacherAccess(teacher.teacherId);
+                actionsDiv.appendChild(btn);
+            }
 
             row.appendChild(infoDiv);
             row.appendChild(actionsDiv);
-            absentListDiv.appendChild(row);
-        });
+            return row;
+        };
+
+        if (onLeaveTeachers.length > 0) {
+            absentListDiv.appendChild(renderSectionTitle('On Leave Today', onLeaveTeachers.length, '#1565c0'));
+            const leaveSummary = document.createElement('div');
+            leaveSummary.className = 'status-success';
+            leaveSummary.style.marginBottom = '8px';
+            leaveSummary.textContent = `Teachers on leave: ${onLeaveTeachers.map((teacher) => teacher.name).join(', ')}`;
+            absentListDiv.appendChild(leaveSummary);
+            onLeaveTeachers.forEach((teacher) => absentListDiv.appendChild(renderTeacherRow(teacher)));
+        }
+
+        if (pendingTeachers.length > 0) {
+            if (onLeaveTeachers.length > 0) {
+                const spacer = document.createElement('div');
+                spacer.style.height = '10px';
+                absentListDiv.appendChild(spacer);
+            }
+
+            absentListDiv.appendChild(renderSectionTitle('Pending Submission', pendingTeachers.length, '#c62828'));
+            pendingTeachers.forEach((teacher) => absentListDiv.appendChild(renderTeacherRow(teacher)));
+        }
+
+        if (onLeaveTeachers.length === 0 && pendingTeachers.length === 0) {
+            absentListDiv.innerHTML = "<p class='status-success'>All active teachers have either submitted logs or are marked on leave.</p>";
+        }
     };
 
     const attachEntriesListener = (targetDate) => {
@@ -1885,41 +2015,56 @@ window.saveEntry = async function(event) {
             console.log("Payment added:", payment);
         }
 
-        if (editingId) {
-            // Update existing entry
-            console.log("Updating entry:", editingId);
-            const docRef = doc(db, "entries", editingId);
-            await updateDoc(docRef, entryData);
-
+        try {
             const currentKolkataDate = getKolkataDateISO();
-            await updateDoc(doc(db, "teachers", teacherId), {
-                hasSubmittedToday: date === currentKolkataDate,
-                isOnLeave: false,
-                isLocked: false,
-                lockDate: null,
-                lastSubmissionDate: date
-            });
+            const batch = writeBatch(db);
 
-            alert("✅ Entry updated successfully!");
-            delete document.getElementById("entryForm").dataset.editingId;
-        } else {
-            // Create new entry
-            console.log("Creating new entry...");
-            entryData.createdAt = Timestamp.now();
-            await addDoc(collection(db, "entries"), entryData);
+            if (editingId) {
+                // Update existing entry and teacher in a single batch (cost optimization)
+                console.log("Updating entry and teacher:", editingId);
+                const docRef = doc(db, "entries", editingId);
+                batch.update(docRef, entryData);
+                
+                if (teacherId) {
+                    batch.update(doc(db, "teachers", teacherId), {
+                        hasSubmittedToday: date === currentKolkataDate,
+                        isOnLeave: false,
+                        isLocked: false,
+                        lockDate: null,
+                        lastSubmissionDate: date
+                    });
+                }
 
-            if (teacherId) {
-                await updateDoc(doc(db, "teachers", teacherId), {
-                    hasSubmittedToday: true,
-                    isOnLeave: false,
-                    isLocked: false,
-                    lockDate: null,
-                    lastSubmissionDate: date || getKolkataDateISO()
-                });
+                await batch.commit();
+                alert("✅ Entry updated successfully!");
+                delete document.getElementById("entryForm").dataset.editingId;
+            } else {
+                // Create new entry and update teacher in a single batch (cost optimization)
+                console.log("Creating new entry and updating teacher...");
+                entryData.createdAt = Timestamp.now();
+                const entriesRef = collection(db, "entries");
+                const entryDocRef = doc(entriesRef);
+                batch.set(entryDocRef, entryData);
+
+                if (teacherId) {
+                    batch.update(doc(db, "teachers", teacherId), {
+                        hasSubmittedToday: true,
+                        isOnLeave: false,
+                        isLocked: false,
+                        lockDate: null,
+                        lastSubmissionDate: date || getKolkataDateISO()
+                    });
+                }
+
+                await batch.commit();
+                console.log("Entry saved to Firestore!");
+                alert("✅ Entry saved successfully!");
             }
-
-            console.log("Entry saved to Firestore!");
-            alert("✅ Entry saved successfully!");
+        } catch (error) {
+            console.error("Error saving entry:", error);
+            alert("Error saving entry. Check console.");
+            isSavingEntry = false;
+            return;
         }
         
         // Clear only student-specific fields, keep date, time, and subject for next entry
@@ -2167,6 +2312,72 @@ window.deleteEntry = async function(docId) {
 let allTeachers = [];
 let allStudents = [];
 
+// Cache configuration (Cost Optimization)
+const CACHE_CONFIG = {
+    STUDENTS_TTL: 30 * 60 * 1000, // 30 minutes
+    TEACHERS_TTL: 30 * 60 * 1000, // 30 minutes
+    LOOKUPS_TTL: 10 * 60 * 1000,  // 10 minutes for ID/name lookups
+};
+
+// Cache storage
+const dataCache = {
+    students: { data: null, timestamp: null },
+    teachers: { data: null, timestamp: null },
+    lookups: new Map(), // For student/teacher ID lookups
+};
+
+// Cache utility functions
+function getCachedData(cacheKey, ttl) {
+    const cached = dataCache[cacheKey];
+    if (!cached || !cached.data) return null;
+    
+    const age = Date.now() - cached.timestamp;
+    if (age > ttl) {
+        cached.data = null;
+        cached.timestamp = null;
+        return null;
+    }
+    return cached.data;
+}
+
+function setCachedData(cacheKey, data, ttl) {
+    dataCache[cacheKey] = {
+        data: data,
+        timestamp: Date.now()
+    };
+}
+
+function getCachedLookup(lookupKey) {
+    if (!dataCache.lookups.has(lookupKey)) return null;
+    
+    const cached = dataCache.lookups.get(lookupKey);
+    const age = Date.now() - cached.timestamp;
+    if (age > CACHE_CONFIG.LOOKUPS_TTL) {
+        dataCache.lookups.delete(lookupKey);
+        return null;
+    }
+    return cached.data;
+}
+
+function setCachedLookup(lookupKey, data) {
+    dataCache.lookups.set(lookupKey, {
+        data: data,
+        timestamp: Date.now()
+    });
+}
+
+function invalidateCache(type = 'all') {
+    if (type === 'all' || type === 'students') {
+        dataCache.students = { data: null, timestamp: null };
+    }
+    if (type === 'all' || type === 'teachers') {
+        dataCache.teachers = { data: null, timestamp: null };
+    }
+    if (type === 'all') {
+        dataCache.lookups.clear();
+    }
+}
+
 // Update statistics
 function updateStats() {
     const activeTeachers = allTeachers.filter(t => t.status === "active").length;
@@ -2199,13 +2410,20 @@ window.initializeData = async function() {
         allStudentsUnsubscribe = null;
     }
 
-    // Set up real-time listener for teachers (limited to 500 to reduce read amplification)
+    // Set up real-time listener for teachers (limited to 500 to reduce read amplification, with caching)
     allTeachersUnsubscribe = onSnapshot(query(collection(db, "teachers"), limit(500)), (snapshot) => {
         setRealtimeCollectionState('teachers', true);
         allTeachers = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
+        
+        // Update cache with fresh data
+        setCachedData('teachers', allTeachers, CACHE_CONFIG.TEACHERS_TTL);
+        
+        // Clear lookup cache on data change
+        dataCache.lookups.clear();
+        
         filterTeachers();
         updateStats();
 
@@ -2220,20 +2438,33 @@ window.initializeData = async function() {
                 datalist.appendChild(opt);
             });
         }
+        
+        // Log cache update
+        console.log(`[CACHE] Teachers updated: ${allTeachers.length} records`);
     }, (error) => {
         setRealtimeCollectionState('teachers', false);
         console.error('Teachers listener error:', error);
     });
 
-    // Set up real-time listener for students
+    // Set up real-time listener for students (with caching)
     allStudentsUnsubscribe = onSnapshot(query(collection(db, "students"), limit(1000)), (snapshot) => {
         setRealtimeCollectionState('students', true);
         allStudents = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
+        
+        // Update cache with fresh data
+        setCachedData('students', allStudents, CACHE_CONFIG.STUDENTS_TTL);
+        
+        // Clear lookup cache on data change (must refetch)
+        dataCache.lookups.clear();
+        
         filterStudents();
         updateStats();
+        
+        // Log cache update
+        console.log(`[CACHE] Students updated: ${allStudents.length} records`);
     }, (error) => {
         setRealtimeCollectionState('students', false);
         console.error('Students listener error:', error);
@@ -2270,6 +2501,9 @@ window.addTeacher = async function() {
             status: "active",
             createdAt: Timestamp.now()
         });
+
+        // Invalidate cache after adding new teacher (cost optimization)
+        invalidateCache('teachers');
 
         document.getElementById("newTeacher").value = "";
         document.getElementById("newTeacherPassword").value = "";
@@ -2347,6 +2581,9 @@ window.addStudent = async function() {
 
         await addDoc(collection(db, "students"), studentData);
 
+        // Invalidate cache after adding new student (cost optimization)
+        invalidateCache('students');
+
         document.getElementById("newStudent").value = "";
         if (document.getElementById("newStudentPayType")) document.getElementById("newStudentPayType").value = "";
         if (document.getElementById("newStudentSub")) document.getElementById("newStudentSub").value = "";
@@ -2377,85 +2614,19 @@ window.toggleTeacherStatus = async function(id) {
         await updateDoc(docRef, {
             status: teacher.status === "active" ? "inactive" : "active"
         });
+        
+        // Invalidate cache after status change (cost optimization)
+        invalidateCache('teachers');
     } catch (error) {
         console.error("Error toggling teacher status:", error);
         alert("Error updating teacher. Check console.");
     }
 }
 
-// Enable student edit mode
-window.enableStudentEdit = function(id, currentPayType, currentSub) {
-    // Hide display, show edit fields
-    const payTypeDisplay = document.getElementById(`payType-display-${id}`);
-    const payTypeEdit = document.getElementById(`payType-edit-${id}`);
-    const subDisplay = document.getElementById(`sub-display-${id}`);
-    const subEdit = document.getElementById(`sub-edit-${id}`);
-    const editBtn = document.getElementById(`edit-btn-${id}`);
-    const saveBtn = document.getElementById(`save-btn-${id}`);
-    
-    if (payTypeDisplay) payTypeDisplay.style.display = 'none';
-    if (payTypeEdit) {
-        payTypeEdit.style.display = 'block';
-        payTypeEdit.value = currentPayType;
-    }
-    if (subDisplay) subDisplay.style.display = 'none';
-    if (subEdit) {
-        subEdit.style.display = 'block';
-        subEdit.value = currentSub;
-    }
-    if (editBtn) editBtn.style.display = 'none';
-    if (saveBtn) saveBtn.style.display = 'inline-block';
-}
 
-// Save student edits
-window.saveStudentEdit = async function(id) {
-    const payTypeEdit = document.getElementById(`payType-edit-${id}`);
-    const subEdit = document.getElementById(`sub-edit-${id}`);
-    
-    const newPayType = payTypeEdit ? payTypeEdit.value : '';
-    const newSub = subEdit ? subEdit.value.trim() : '';
-    
-    try {
-        const docRef = doc(db, "students", id);
-        await updateDoc(docRef, {
-            payType: newPayType,
-            sub: newSub
-        });
-        
-        // Update local data
-        const student = allStudents.find(s => s.id === id);
-        if (student) {
-            student.payType = newPayType;
-            student.sub = newSub;
-        }
-        
-        // Update display
-        const payTypeDisplay = document.getElementById(`payType-display-${id}`);
-        const subDisplay = document.getElementById(`sub-display-${id}`);
-        const editBtn = document.getElementById(`edit-btn-${id}`);
-        const saveBtn = document.getElementById(`save-btn-${id}`);
-        
-        if (payTypeDisplay) {
-            payTypeDisplay.textContent = newPayType || '-';
-            payTypeDisplay.style.display = 'inline';
-        }
-        if (subDisplay) {
-            subDisplay.textContent = newSub || '-';
-            subDisplay.style.display = 'inline';
-        }
-        if (payTypeEdit) payTypeEdit.style.display = 'none';
-        if (subEdit) subEdit.style.display = 'none';
-        if (editBtn) editBtn.style.display = 'inline-block';
-        if (saveBtn) saveBtn.style.display = 'none';
-        
-    } catch (error) {
-        console.error('Error updating student:', error);
-        alert('Error updating student. Check console.');
-    }
-}
 
 // Open edit student details modal
-window.openEditStudentModal = function(id, currentName, currentMode, offlineCentreName) {
+window.openEditStudentModal = function(id, currentName, currentMode, offlineCentreName, currentPayType, currentSub) {
     const modal = document.getElementById('editStudentModal');
     if (!modal) {
         console.error('Edit student modal not found');
@@ -2465,6 +2636,8 @@ window.openEditStudentModal = function(id, currentName, currentMode, offlineCent
     document.getElementById('editStudentId').value = id;
     document.getElementById('editStudentName').value = currentName;
     document.getElementById('editStudentMode').value = currentMode;
+    document.getElementById('editStudentPayType').value = currentPayType || '';
+    document.getElementById('editStudentSub').value = currentSub || '';
     
     const centreNameInput = document.getElementById('editStudentCentreName');
     if (centreNameInput) {
@@ -2490,11 +2663,13 @@ window.handleStudentModeChange = function() {
     }
 }
 
-// Save student details from modal
+// Save student details from modal (with cache invalidation)
 window.saveStudentDetails = async function() {
     const id = document.getElementById('editStudentId').value;
     let newName = document.getElementById('editStudentName').value.trim();
     const newMode = document.getElementById('editStudentMode').value;
+    const newPayType = document.getElementById('editStudentPayType').value;
+    const newSub = document.getElementById('editStudentSub').value.trim();
     const centreNameInput = document.getElementById('editStudentCentreName');
     const newCentreName = centreNameInput ? centreNameInput.value.trim() : '';
     
@@ -2530,7 +2705,9 @@ window.saveStudentDetails = async function() {
         const updateData = {
             name: newName,
             searchName: newName.toLowerCase(),
-            mode: newMode
+            mode: newMode,
+            payType: newPayType,
+            sub: newSub
         };
         
         // Handle centre name for offline students
@@ -2549,12 +2726,17 @@ window.saveStudentDetails = async function() {
             currentStudent.name = newName;
             currentStudent.searchName = newName.toLowerCase();
             currentStudent.mode = newMode;
+            currentStudent.payType = newPayType;
+            currentStudent.sub = newSub;
             if (newMode === 'offline' && newCentreName) {
                 currentStudent.offlineCentreName = newCentreName;
             } else if (newMode === 'online') {
                 currentStudent.offlineCentreName = '';
             }
         }
+        
+        // Invalidate cache after update (cost optimization)
+        invalidateCache('students');
         
         // Reload the student list to reflect changes
         const studentList = document.getElementById('studentList');
@@ -2590,7 +2772,7 @@ window.updateStudentField = async function(id, field, value) {
     }
 }
 
-// Toggle student status
+// Toggle student status (with cache invalidation)
 window.toggleStudentStatus = async function(id) {
     const student = allStudents.find(s => s.id === id);
     if (!student) return;
@@ -2602,6 +2784,9 @@ window.toggleStudentStatus = async function(id) {
         await updateDoc(docRef, {
             status: student.status === "active" ? "inactive" : "active"
         });
+        
+        // Invalidate cache after status change (cost optimization)
+        invalidateCache('students');
     } catch (error) {
         console.error("Error toggling student status:", error);
         alert("Error updating student. Check console.");
@@ -2624,7 +2809,7 @@ window.deleteTeacher = async function(id) {
     }
 }
 
-// Delete student
+// Delete student (with cache invalidation)
 window.deleteStudent = async function(id) {
     const student = allStudents.find(s => s.id === id);
     if (!student) return;
@@ -2633,6 +2818,10 @@ window.deleteStudent = async function(id) {
 
     try {
         await deleteDoc(doc(db, "students", id));
+        
+        // Invalidate cache after deletion (cost optimization)
+        invalidateCache('students');
+        
         alert("Student deleted successfully!");
     } catch (error) {
         console.error("Error deleting student:", error);
@@ -3076,27 +3265,11 @@ function displayStudents(filtered) {
                 <td style="text-align: center; font-weight: 500;">${index + 1}</td>
                 <td>${s.name}</td>
                 <td style="text-align: center;">${modeText}</td>
-                <td style="text-align: center; padding: 8px;">
-                    <span id="payType-display-${s.id}">${payType}</span>
-                    <select id="payType-edit-${s.id}" style="display: none; width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Roboto', sans-serif; background: white;">
-                        <option value="">-</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="per class">Per Class</option>
-                        <option value="lump sum">Lump Sum</option>
-                        <option value="custom">Custom</option>
-                    </select>
-                </td>
-                <td style="text-align: center; padding: 8px;">
-                    <span id="sub-display-${s.id}">${sub}</span>
-                    <input type="text" id="sub-edit-${s.id}" style="display: none; width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Roboto', sans-serif;" placeholder="-">
-                </td>
                 <td style="text-align: center;">
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </td>
                 <td style="text-align: center;">
-                    <button onclick="openEditStudentModal('${s.id}', '${s.name}', '${s.mode || 'online'}', '${s.offlineCentreName || ''}')" style="padding: 6px 12px; background: #007AFF; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 4px; font-size: 12px;">Edit Details</button>
-                    <button id="edit-btn-${s.id}" class="toggle-btn activate" onclick="enableStudentEdit('${s.id}', '${s.payType || ''}', '${s.sub || ''}')" style="margin-right: 4px;">Edit Pay</button>
-                    <button id="save-btn-${s.id}" class="toggle-btn" onclick="saveStudentEdit('${s.id}')" style="display: none; margin-right: 4px; background: #48bb78;">OK</button>
+                    <button onclick="openEditStudentModal('${s.id}', '${s.name}', '${s.mode || 'online'}', '${s.offlineCentreName || ''}', '${s.payType || ''}', '${s.sub || ''}')" style="padding: 6px 12px; background: #007AFF; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 4px; font-size: 12px;">Edit Details</button>
                     <button class="toggle-btn ${toggleBtnClass}" onclick="toggleStudentStatus('${s.id}')">${toggleBtnText}</button>
                     <button class="delete-btn" onclick="deleteStudent('${s.id}')">Delete</button>
                 </td>
@@ -4148,14 +4321,18 @@ window.loadAdminEntries = async function(options = {}) {
                 let entriesSnapshot, sessionsSnapshot;
                 
                 try {
-                    // Try with orderBy (requires composite index on createdAt)
-                    entriesSnapshot = await getDocs(query(collection(db, "entries"), orderBy('createdAt', 'desc'), limit(500)));
-                    sessionsSnapshot = await getDocs(query(collection(db, "doubt_sessions"), orderBy('createdAt', 'desc'), limit(500)));
+                    // Load entries and sessions in parallel (cost optimization)
+                    [entriesSnapshot, sessionsSnapshot] = await Promise.all([
+                        getDocs(query(collection(db, "entries"), orderBy('createdAt', 'desc'), limit(500))),
+                        getDocs(query(collection(db, "doubt_sessions"), orderBy('createdAt', 'desc'), limit(500)))
+                    ]);
                 } catch (indexError) {
                     // Fallback: load without orderBy if composite index not ready or missing createdAt fields
                     console.warn('Composite index not ready, falling back to unordered query:', indexError.message);
-                    entriesSnapshot = await getDocs(query(collection(db, "entries"), limit(500)));
-                    sessionsSnapshot = await getDocs(query(collection(db, "doubt_sessions"), limit(500)));
+                    [entriesSnapshot, sessionsSnapshot] = await Promise.all([
+                        getDocs(query(collection(db, "entries"), limit(500))),
+                        getDocs(query(collection(db, "doubt_sessions"), limit(500)))
+                    ]);
                 }
 
                 // Get full collection counts cheaply without loading all documents.
@@ -5125,17 +5302,18 @@ window.saveAdminEntry = async function(event) {
         }
 
         console.log('Preparing to save entry, fetching teacher/student docs');
-        // Get teacher data
-        const teacherDoc = await getDoc(doc(db, "teachers", teacherId));
+        // Fetch teacher and student data in parallel (cost optimization)
+        const [teacherDoc, studentDoc] = await Promise.all([
+            getDoc(doc(db, "teachers", teacherId)),
+            getDoc(doc(db, "students", studentId))
+        ]);
+
         if (!teacherDoc.exists()) {
             alert("❌ Teacher not found!");
             return;
         }
         const teacherData = teacherDoc.data();
         
-        console.log('Got teacher data, fetching student');
-        // Get student data
-        const studentDoc = await getDoc(doc(db, "students", studentId));
         if (!studentDoc.exists()) {
             alert("❌ Student not found!");
             return;
