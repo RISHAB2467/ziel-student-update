@@ -903,7 +903,6 @@ window.loadAccountabilityTracker = async function() {
             });
         });
 
-        const submittedTeachers = teacherRows.filter((teacher) => teacher.submittedYesterday && !teacher.isLocked && !teacher.isOnLeave);
         const lockedTeachers = teacherRows.filter((teacher) => teacher.isLocked);
         const onLeaveTeachers = teacherRows.filter((teacher) => teacher.isOnLeave);
 
@@ -1040,7 +1039,6 @@ window.loadAccountabilityTracker = async function() {
             absentListDiv.appendChild(renderTeacherRow(teacher));
         });
 
-        summaryDiv.appendChild(createSummaryGroup('Submitted', submittedTeachers, 'No teachers have submitted yet.', '#1b5e20', false));
         summaryDiv.appendChild(createSummaryGroup('Locked', lockedTeachers, 'No teachers are locked.', '#c62828'));
         summaryDiv.appendChild(createSummaryGroup('On Leave', onLeaveTeachers, 'No teachers are marked on leave.', '#1565c0'));
 
