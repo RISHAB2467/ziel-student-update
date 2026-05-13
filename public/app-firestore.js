@@ -894,16 +894,30 @@ window.loadAccountabilityTracker = async function() {
         const lockedTeachers = teacherRows.filter((teacher) => teacher.isLocked);
         const onLeaveTeachers = teacherRows.filter((teacher) => teacher.isOnLeave);
 
-        const createSummaryGroup = (title, teacherList, emptyText) => {
+        const createSummaryGroup = (title, teacherList, emptyText, badgeColor) => {
             const group = document.createElement('div');
-            group.className = 'accountability-summary-group';
+            group.className = 'accountability-summary-card';
 
-            const heading = document.createElement('h4');
-            heading.textContent = `${title} (${teacherList.length})`;
-            group.appendChild(heading);
+            const cardHeader = document.createElement('div');
+            cardHeader.className = 'accountability-card-header';
+            cardHeader.style.cssText = `background: linear-gradient(135deg, ${badgeColor}22, ${badgeColor}11); border-left: 4px solid ${badgeColor}; cursor: pointer;`;
+
+            const titleEl = document.createElement('div');
+            titleEl.className = 'accountability-card-title';
+            titleEl.textContent = title;
+            cardHeader.appendChild(titleEl);
+
+            const countEl = document.createElement('div');
+            countEl.className = 'accountability-card-count';
+            countEl.textContent = teacherList.length;
+            countEl.style.cssText = `color: ${badgeColor}; font-weight: 700; font-size: 28px;`;
+            cardHeader.appendChild(countEl);
+
+            group.appendChild(cardHeader);
 
             const items = document.createElement('div');
-            items.className = 'accountability-summary-items';
+            items.className = 'accountability-card-items';
+            items.style.display = 'none';
 
             if (teacherList.length === 0) {
                 const empty = document.createElement('div');
@@ -913,32 +927,16 @@ window.loadAccountabilityTracker = async function() {
             } else {
                 teacherList.forEach((teacher) => {
                     const item = document.createElement('div');
-                    item.className = 'teacher-status-row';
-
-                    const infoDiv = document.createElement('div');
-                    infoDiv.className = 'teacher-info';
-
-                    const nameEl = document.createElement('strong');
-                    nameEl.textContent = teacher.name;
-                    infoDiv.appendChild(nameEl);
-
-                    const badge = document.createElement('span');
-                    if (teacher.isLocked) {
-                        badge.className = 'badge-locked';
-                        badge.textContent = 'LOCKED';
-                    } else if (teacher.isOnLeave) {
-                        badge.className = 'badge-leave';
-                        badge.textContent = 'ON LEAVE';
-                    } else {
-                        badge.className = 'badge-submitted';
-                        badge.textContent = 'SUBMITTED';
-                    }
-                    infoDiv.appendChild(badge);
-
-                    item.appendChild(infoDiv);
+                    item.style.cssText = 'padding: 8px 12px; border-bottom: 1px solid #eceff1; font-size: 13px; color: #2c2c2c;';
+                    item.textContent = teacher.name;
                     items.appendChild(item);
                 });
             }
+
+            cardHeader.onclick = () => {
+                items.style.display = items.style.display === 'none' ? 'block' : 'none';
+                cardHeader.style.opacity = items.style.display === 'none' ? '1' : '0.85';
+            };
 
             group.appendChild(items);
             return group;
@@ -1026,9 +1024,9 @@ window.loadAccountabilityTracker = async function() {
             absentListDiv.appendChild(renderTeacherRow(teacher));
         });
 
-        summaryDiv.appendChild(createSummaryGroup('Submitted', submittedTeachers, 'No teachers have submitted yet.'));
-        summaryDiv.appendChild(createSummaryGroup('Locked', lockedTeachers, 'No teachers are locked.'));
-        summaryDiv.appendChild(createSummaryGroup('On Leave', onLeaveTeachers, 'No teachers are marked on leave.'));
+        summaryDiv.appendChild(createSummaryGroup('Submitted', submittedTeachers, 'No teachers have submitted yet.', '#1b5e20'));
+        summaryDiv.appendChild(createSummaryGroup('Locked', lockedTeachers, 'No teachers are locked.', '#c62828'));
+        summaryDiv.appendChild(createSummaryGroup('On Leave', onLeaveTeachers, 'No teachers are marked on leave.', '#1565c0'));
 
         if (teacherRows.length === 0) {
             absentListDiv.innerHTML = "<p class='status-success'>No active teachers found.</p>";

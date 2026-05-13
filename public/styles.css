@@ -396,6 +396,51 @@ footer {
     gap: 12px;
 }
 
+.accountability-summary-card {
+    border: 1px solid #eceff1;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.accountability-card-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.accountability-card-header:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
+
+.accountability-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c2c2c;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.accountability-card-count {
+    text-align: center;
+    font-weight: 700;
+    font-size: 28px;
+    line-height: 1;
+}
+
+.accountability-card-items {
+    background: #fafafa;
+    border-top: 1px solid #eceff1;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
 .accountability-summary-group {
     border: 1px solid #eceff1;
     border-radius: 8px;
