@@ -265,6 +265,7 @@ let accountabilityEntriesUnsubscribe = null;
 let allTeachersUnsubscribe = null;
 let allStudentsUnsubscribe = null;
 let bulkUnlockInProgress = false;
+let accountabilityTeacherRows = []; // Store all teachers for filtering
 
 const realtimeCollections = new Set();
 const USER_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
@@ -1021,9 +1022,31 @@ window.loadAccountabilityTracker = async function() {
             return row;
         };
 
-        teacherRows.forEach((teacher) => {
-            absentListDiv.appendChild(renderTeacherRow(teacher));
-        });
+        // Store all teacher rows globally for filtering
+        accountabilityTeacherRows = teacherRows;
+
+        // Get search filter value
+        const searchFilter = document.getElementById('searchAccountabilityTeacher')?.value.toLowerCase() || "";
+
+        // Filter teachers based on search
+        let filteredTeachers = teacherRows;
+        if (searchFilter) {
+            filteredTeachers = teacherRows.filter(t => t.name.toLowerCase().includes(searchFilter));
+        }
+
+        // Clear and re-render filtered list
+        absentListDiv.innerHTML = '';
+        if (filteredTeachers.length === 0) {
+            if (searchFilter) {
+                absentListDiv.innerHTML = "<p class='status-success'>No teachers match your search.</p>";
+            } else {
+                absentListDiv.innerHTML = "<p class='status-success'>No active teachers found.</p>";
+            }
+        } else {
+            filteredTeachers.forEach((teacher) => {
+                absentListDiv.appendChild(renderTeacherRow(teacher));
+            });
+        }
 
         summaryDiv.appendChild(createSummaryGroup('Locked', lockedTeachers, 'No teachers are locked.', '#c62828'));
         summaryDiv.appendChild(createSummaryGroup('On Leave', onLeaveTeachers, 'No teachers are marked on leave.', '#1565c0'));
@@ -1078,6 +1101,93 @@ window.loadAccountabilityTracker = async function() {
         console.error('Accountability tracker error:', error);
         absentListDiv.innerHTML = "<p style='color:#c62828;'>Unable to load accountability monitor right now.</p>";
     });
+};
+
+window.filterAccountabilityTeachers = function() {
+    const searchFilter = document.getElementById('searchAccountabilityTeacher')?.value.toLowerCase() || "";
+    const absentListDiv = document.getElementById('absent-list');
+    if (!absentListDiv) return;
+
+    // Filter teachers based on search
+    let filteredTeachers = accountabilityTeacherRows;
+    if (searchFilter) {
+        filteredTeachers = accountabilityTeacherRows.filter(t => t.name.toLowerCase().includes(searchFilter));
+    }
+
+    // Clear and re-render filtered list
+    absentListDiv.innerHTML = '';
+    if (filteredTeachers.length === 0) {
+        if (searchFilter) {
+            absentListDiv.innerHTML = "<p class='status-success'>No teachers match your search.</p>";
+        } else {
+            absentListDiv.innerHTML = "<p class='status-success'>No active teachers found.</p>";
+        }
+    } else {
+        filteredTeachers.forEach((teacher) => {
+            // Create teacher row element
+            const row = document.createElement('div');
+            row.className = 'teacher-status-row';
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'teacher-info';
+
+            const nameWrap = document.createElement('div');
+            nameWrap.className = 'teacher-name-stack';
+
+            const nameEl = document.createElement('strong');
+            nameEl.textContent = teacher.name;
+            nameWrap.appendChild(nameEl);
+
+            const badgeWrap = document.createElement('div');
+            badgeWrap.className = 'teacher-badges';
+
+            if (teacher.isLocked) {
+                const badge = document.createElement('span');
+                badge.className = 'badge-locked';
+                badge.textContent = 'LOCKED';
+                badgeWrap.appendChild(badge);
+            }
+
+            if (teacher.isOnLeave) {
+                const badge = document.createElement('span');
+                badge.className = 'badge-leave';
+                badge.textContent = 'ON LEAVE TODAY';
+                badgeWrap.appendChild(badge);
+            }
+
+            nameWrap.appendChild(badgeWrap);
+            infoDiv.appendChild(nameWrap);
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'teacher-actions';
+
+            if (teacher.isOnLeave) {
+                const leaveNote = document.createElement('span');
+                leaveNote.className = 'status-success';
+                leaveNote.style.display = 'inline-block';
+                leaveNote.textContent = 'No action needed';
+                actionsDiv.appendChild(leaveNote);
+            } else if (teacher.isLocked) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-restore';
+                btn.type = 'button';
+                btn.textContent = 'Unlock and Continue';
+                btn.onclick = () => window.restoreTeacherAccess(teacher.teacherId);
+                actionsDiv.appendChild(btn);
+            } else if (!teacher.submittedYesterday) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-restore';
+                btn.type = 'button';
+                btn.textContent = 'Mark as Excused';
+                btn.onclick = () => window.restoreTeacherAccess(teacher.teacherId);
+                actionsDiv.appendChild(btn);
+            }
+
+            row.appendChild(infoDiv);
+            row.appendChild(actionsDiv);
+            absentListDiv.appendChild(row);
+        });
+    }
 };
 
 window.restoreTeacherAccess = async function(tId) {
