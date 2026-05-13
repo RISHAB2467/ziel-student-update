@@ -907,7 +907,7 @@ window.loadAccountabilityTracker = async function() {
         const lockedTeachers = teacherRows.filter((teacher) => teacher.isLocked);
         const onLeaveTeachers = teacherRows.filter((teacher) => teacher.isOnLeave);
 
-        const createSummaryGroup = (title, teacherList, emptyText, badgeColor) => {
+        const createSummaryGroup = (title, teacherList, emptyText, badgeColor, showItems = true) => {
             const group = document.createElement('div');
             group.className = 'accountability-summary-card';
 
@@ -928,30 +928,33 @@ window.loadAccountabilityTracker = async function() {
 
             group.appendChild(cardHeader);
 
-            const items = document.createElement('div');
-            items.className = 'accountability-card-items';
-            items.style.display = 'none';
+            if (showItems) {
+                const items = document.createElement('div');
+                items.className = 'accountability-card-items';
+                items.style.display = 'none';
 
-            if (teacherList.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'accountability-summary-empty';
-                empty.textContent = emptyText;
-                items.appendChild(empty);
-            } else {
-                teacherList.forEach((teacher) => {
-                    const item = document.createElement('div');
-                    item.style.cssText = 'padding: 8px 12px; border-bottom: 1px solid #eceff1; font-size: 13px; color: #2c2c2c;';
-                    item.textContent = teacher.name;
-                    items.appendChild(item);
-                });
+                if (teacherList.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'accountability-summary-empty';
+                    empty.textContent = emptyText;
+                    items.appendChild(empty);
+                } else {
+                    teacherList.forEach((teacher) => {
+                        const item = document.createElement('div');
+                        item.style.cssText = 'padding: 8px 12px; border-bottom: 1px solid #eceff1; font-size: 13px; color: #2c2c2c;';
+                        item.textContent = teacher.name;
+                        items.appendChild(item);
+                    });
+                }
+
+                cardHeader.onclick = () => {
+                    items.style.display = items.style.display === 'none' ? 'block' : 'none';
+                    cardHeader.style.opacity = items.style.display === 'none' ? '1' : '0.85';
+                };
+
+                group.appendChild(items);
             }
 
-            cardHeader.onclick = () => {
-                items.style.display = items.style.display === 'none' ? 'block' : 'none';
-                cardHeader.style.opacity = items.style.display === 'none' ? '1' : '0.85';
-            };
-
-            group.appendChild(items);
             return group;
         };
 
@@ -1037,7 +1040,7 @@ window.loadAccountabilityTracker = async function() {
             absentListDiv.appendChild(renderTeacherRow(teacher));
         });
 
-        summaryDiv.appendChild(createSummaryGroup('Submitted', submittedTeachers, 'No teachers have submitted yet.', '#1b5e20'));
+        summaryDiv.appendChild(createSummaryGroup('Submitted', submittedTeachers, 'No teachers have submitted yet.', '#1b5e20', false));
         summaryDiv.appendChild(createSummaryGroup('Locked', lockedTeachers, 'No teachers are locked.', '#c62828'));
         summaryDiv.appendChild(createSummaryGroup('On Leave', onLeaveTeachers, 'No teachers are marked on leave.', '#1565c0'));
 
