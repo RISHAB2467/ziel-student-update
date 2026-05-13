@@ -76,3 +76,34 @@ self.addEventListener('notificationclick', (event) => {
         })
     );
 });
+
+// 4. MESSAGE HANDLER: Safely handle messages from main thread
+self.addEventListener('message', (event) => {
+    // Skip messages from other sources
+    if (!event.data || typeof event.data !== 'object') {
+        return;
+    }
+
+    const { type, data } = event.data;
+
+    // Handle different message types
+    switch (type) {
+        case 'SKIP_WAITING':
+            self.skipWaiting();
+            break;
+        case 'CLEAR_CACHE':
+            // Handle cache clearing if needed
+            caches.keys().then((cacheNames) => {
+                cacheNames.forEach((cacheName) => caches.delete(cacheName));
+            });
+            break;
+        default:
+            // Silently ignore unknown message types
+            return;
+    }
+
+    // Send response back to client
+    if (event.ports && event.ports.length > 0) {
+        event.ports[0].postMessage({ success: true });
+    }
+});

@@ -92,12 +92,25 @@ async function initializeAppFeatures() {
         for (const reg of registrations) {
             const scriptUrl = reg.active?.scriptURL || reg.waiting?.scriptURL || reg.installing?.scriptURL || '';
             if (scriptUrl.includes('/sw.js') && !scriptUrl.includes('/firebase-messaging-sw.js')) {
-                await reg.unregister();
+                try {
+                    await reg.unregister();
+                    console.log('Legacy service worker unregistered');
+                } catch (unregErr) {
+                    console.warn('Could not unregister legacy worker:', unregErr);
+                }
             }
         }
 
-        messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        await messagingRegistration.update();
+        messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+            updateViaCache: 'none', // Bypass cache for SW updates to get latest version
+            scope: '/'
+        });
+        
+        // Update registration without blocking; errors are non-critical
+        messagingRegistration.update().catch((err) => {
+            console.warn('Service Worker update check failed (non-critical):', err.message);
+        });
+        
         console.log('Messaging Service Worker registered with scope:', messagingRegistration.scope);
     } catch (error) {
         console.error('Service Worker registration failed:', error);
