@@ -368,6 +368,59 @@ footer {
     gap: 10px;
 }
 
+.accountability-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.accountability-panel {
+    background: #ffffff;
+    border: 1px solid #eceff1;
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.accountability-panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2c2c2c;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+.accountability-summary-list {
+    display: grid;
+    gap: 12px;
+}
+
+.accountability-summary-group {
+    border: 1px solid #eceff1;
+    border-radius: 8px;
+    padding: 12px;
+    background: #fafafa;
+}
+
+.accountability-summary-group h4 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #2c2c2c;
+}
+
+.accountability-summary-items {
+    display: grid;
+    gap: 8px;
+}
+
+.accountability-summary-empty {
+    color: #5f6368;
+    font-size: 13px;
+    padding: 6px 0;
+}
+
 .loading-spinner {
     color: #5f6368;
     font-size: 13px;
@@ -394,6 +447,18 @@ footer {
 .teacher-actions {
     display: flex;
     align-items: center;
+}
+
+.teacher-name-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.teacher-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .status-success {
@@ -426,6 +491,26 @@ footer {
     border: 1px solid #90caf9;
 }
 
+.badge-submitted {
+    background: #e8f5e9;
+    color: #1b5e20;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid #a5d6a7;
+}
+
+.badge-neutral {
+    background: #fff8e1;
+    color: #a15c00;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid #ffd666;
+}
+
 .btn-restore {
     background: #2e7d32;
     color: #ffffff;
@@ -441,6 +526,12 @@ footer {
 .btn-restore:hover {
     background: #1b5e20;
     transform: translateY(-1px);
+}
+
+@media (max-width: 1024px) {
+    .accountability-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .login-box {

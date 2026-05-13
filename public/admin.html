@@ -792,9 +792,20 @@
                     </div>
                 </div>
                 <div id="accountabilityBody" class="accountability-body accountability-collapsed">
-                    <p class="accountability-subtitle">Teachers who have not submitted data for the selected date, plus anyone marked on leave today.</p>
-                    <div id="absent-list" class="admin-list-container accountability-list-scroll">
-                        <div class="loading-spinner">Checking database...</div>
+                    <p class="accountability-subtitle">All active teachers are shown here. The right side groups who submitted, who are locked, and who are on leave.</p>
+                    <div class="accountability-grid">
+                        <div class="accountability-panel">
+                            <div class="accountability-panel-title">All Teachers</div>
+                            <div id="absent-list" class="admin-list-container accountability-list-scroll">
+                                <div class="loading-spinner">Checking database...</div>
+                            </div>
+                        </div>
+                        <div class="accountability-panel accountability-summary-panel">
+                            <div class="accountability-panel-title">Status Summary</div>
+                            <div id="accountabilitySummary" class="accountability-summary-list">
+                                <div class="loading-spinner">Checking database...</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

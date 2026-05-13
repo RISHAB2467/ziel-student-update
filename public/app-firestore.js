@@ -827,7 +827,8 @@ window.unlockTeacher = async function(id) {
 
 window.loadAccountabilityTracker = async function() {
     const absentListDiv = document.getElementById('absent-list');
-    if (!absentListDiv) return;
+    const summaryDiv = document.getElementById('accountabilitySummary');
+    if (!absentListDiv || !summaryDiv) return;
 
     const dateLabel = document.getElementById('accountabilityDateLabel');
     if (dateLabel) {
@@ -861,9 +862,9 @@ window.loadAccountabilityTracker = async function() {
         if (!latestTeacherSnapshot) return;
 
         absentListDiv.innerHTML = '';
+        summaryDiv.innerHTML = '';
 
         const { hour } = getKolkataTimeParts();
-        const isPreMidnight = hour >= 1 && hour <= 23;
         const teacherRows = [];
 
         if (latestTeacherSnapshot.empty) {
@@ -889,14 +890,58 @@ window.loadAccountabilityTracker = async function() {
             });
         });
 
+        const submittedTeachers = teacherRows.filter((teacher) => teacher.submittedYesterday && !teacher.isLocked && !teacher.isOnLeave);
+        const lockedTeachers = teacherRows.filter((teacher) => teacher.isLocked);
         const onLeaveTeachers = teacherRows.filter((teacher) => teacher.isOnLeave);
-        const pendingTeachers = teacherRows.filter((teacher) => !teacher.submittedYesterday && !teacher.isOnLeave);
 
-        const renderSectionTitle = (title, count, color) => {
-            const titleEl = document.createElement('div');
-            titleEl.style.cssText = `font-size: 13px; font-weight: 700; color: ${color}; margin: 6px 0 2px; text-transform: uppercase; letter-spacing: 0.4px;`;
-            titleEl.textContent = `${title} (${count})`;
-            return titleEl;
+        const createSummaryGroup = (title, teacherList, emptyText) => {
+            const group = document.createElement('div');
+            group.className = 'accountability-summary-group';
+
+            const heading = document.createElement('h4');
+            heading.textContent = `${title} (${teacherList.length})`;
+            group.appendChild(heading);
+
+            const items = document.createElement('div');
+            items.className = 'accountability-summary-items';
+
+            if (teacherList.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'accountability-summary-empty';
+                empty.textContent = emptyText;
+                items.appendChild(empty);
+            } else {
+                teacherList.forEach((teacher) => {
+                    const item = document.createElement('div');
+                    item.className = 'teacher-status-row';
+
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'teacher-info';
+
+                    const nameEl = document.createElement('strong');
+                    nameEl.textContent = teacher.name;
+                    infoDiv.appendChild(nameEl);
+
+                    const badge = document.createElement('span');
+                    if (teacher.isLocked) {
+                        badge.className = 'badge-locked';
+                        badge.textContent = 'LOCKED';
+                    } else if (teacher.isOnLeave) {
+                        badge.className = 'badge-leave';
+                        badge.textContent = 'ON LEAVE';
+                    } else {
+                        badge.className = 'badge-submitted';
+                        badge.textContent = 'SUBMITTED';
+                    }
+                    infoDiv.appendChild(badge);
+
+                    item.appendChild(infoDiv);
+                    items.appendChild(item);
+                });
+            }
+
+            group.appendChild(items);
+            return group;
         };
 
         const renderTeacherRow = (teacher) => {
@@ -907,18 +952,14 @@ window.loadAccountabilityTracker = async function() {
             infoDiv.className = 'teacher-info';
 
             const nameWrap = document.createElement('div');
-            nameWrap.style.display = 'flex';
-            nameWrap.style.flexDirection = 'column';
-            nameWrap.style.gap = '6px';
+            nameWrap.className = 'teacher-name-stack';
 
             const nameEl = document.createElement('strong');
             nameEl.textContent = teacher.name;
             nameWrap.appendChild(nameEl);
 
             const badgeWrap = document.createElement('div');
-            badgeWrap.style.display = 'flex';
-            badgeWrap.style.flexWrap = 'wrap';
-            badgeWrap.style.gap = '8px';
+            badgeWrap.className = 'teacher-badges';
 
             if (teacher.isLocked) {
                 const badge = document.createElement('span');
@@ -936,22 +977,15 @@ window.loadAccountabilityTracker = async function() {
 
             if (!teacher.isLocked && !teacher.isOnLeave && teacher.submittedYesterday) {
                 const badge = document.createElement('span');
-                badge.className = 'status-success';
-                badge.style.display = 'inline-block';
-                badge.style.padding = '4px 10px';
-                badge.style.fontSize = '11px';
-                badge.style.borderRadius = '4px';
+                badge.className = 'badge-submitted';
                 badge.textContent = 'SUBMITTED';
                 badgeWrap.appendChild(badge);
             }
 
             if (!teacher.isLocked && !teacher.isOnLeave && !teacher.submittedYesterday) {
                 const badge = document.createElement('span');
-                badge.className = 'badge-locked';
-                badge.style.background = '#fff8e1';
-                badge.style.color = '#a15c00';
-                badge.style.borderColor = '#ffd666';
-                badge.textContent = 'PENDING';
+                badge.className = 'badge-neutral';
+                badge.textContent = 'NO SUBMISSION';
                 badgeWrap.appendChild(badge);
             }
 
@@ -988,29 +1022,17 @@ window.loadAccountabilityTracker = async function() {
             return row;
         };
 
-        if (onLeaveTeachers.length > 0) {
-            absentListDiv.appendChild(renderSectionTitle('On Leave Today', onLeaveTeachers.length, '#1565c0'));
-            const leaveSummary = document.createElement('div');
-            leaveSummary.className = 'status-success';
-            leaveSummary.style.marginBottom = '8px';
-            leaveSummary.textContent = `Teachers on leave: ${onLeaveTeachers.map((teacher) => teacher.name).join(', ')}`;
-            absentListDiv.appendChild(leaveSummary);
-            onLeaveTeachers.forEach((teacher) => absentListDiv.appendChild(renderTeacherRow(teacher)));
-        }
+        teacherRows.forEach((teacher) => {
+            absentListDiv.appendChild(renderTeacherRow(teacher));
+        });
 
-        if (pendingTeachers.length > 0) {
-            if (onLeaveTeachers.length > 0) {
-                const spacer = document.createElement('div');
-                spacer.style.height = '10px';
-                absentListDiv.appendChild(spacer);
-            }
+        summaryDiv.appendChild(createSummaryGroup('Submitted', submittedTeachers, 'No teachers have submitted yet.'));
+        summaryDiv.appendChild(createSummaryGroup('Locked', lockedTeachers, 'No teachers are locked.'));
+        summaryDiv.appendChild(createSummaryGroup('On Leave', onLeaveTeachers, 'No teachers are marked on leave.'));
 
-            absentListDiv.appendChild(renderSectionTitle('Pending Submission', pendingTeachers.length, '#c62828'));
-            pendingTeachers.forEach((teacher) => absentListDiv.appendChild(renderTeacherRow(teacher)));
-        }
-
-        if (onLeaveTeachers.length === 0 && pendingTeachers.length === 0) {
-            absentListDiv.innerHTML = "<p class='status-success'>All active teachers have either submitted logs or are marked on leave.</p>";
+        if (teacherRows.length === 0) {
+            absentListDiv.innerHTML = "<p class='status-success'>No active teachers found.</p>";
+            summaryDiv.innerHTML = "<p class='accountability-summary-empty'>No active teachers found.</p>";
         }
     };
 
