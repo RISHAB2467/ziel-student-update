@@ -196,11 +196,11 @@
         /* Tabs */
         .tab-container {
             display: flex;
-            gap: 10px;
+            gap: 6px;
             margin-bottom: 24px;
-            padding: 10px;
+            padding: 6px;
             border: 1px solid rgba(229, 231, 235, 0.8);
-            border-radius: 18px;
+            border-radius: 14px;
             background: rgba(255, 255, 255, 0.72);
             box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
             backdrop-filter: blur(12px);
@@ -211,10 +211,10 @@
         .tab-btn {
             background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid #e5e7eb;
-            border-radius: 14px;
-            padding: 12px 22px;
+            border-radius: 10px;
+            padding: 8px 16px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             color: #374151;
             white-space: nowrap;
@@ -1079,12 +1079,18 @@
 
             <!-- Student Selection and Filters -->
             <div style="background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 8px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(44, 44, 44, 0.1); border: 1px solid rgba(212, 175, 55, 0.3);">
-                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
                     <div style="position: relative;">
                         <label style="display: block; font-weight: 500; margin-bottom: 6px; color: #2c2c2c; font-family: 'Roboto', sans-serif; font-size: 14px;">Select Student</label>
                         <input type="text" id="searchStudentReport" placeholder="Type to search student..." oninput="filterStudentList()" onfocus="showStudentDropdown()" style="width: 100%; padding: 10px 12px; border: 1px solid #dadce0; border-radius: 4px; font-family: 'Roboto', sans-serif; font-size: 14px;">
                         <div id="studentDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #dadce0; border-top: none; border-radius: 0 0 4px 4px; max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 8px rgba(44, 44, 44, 0.15);"></div>
                         <input type="hidden" id="selectedStudentId" value="">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 500; margin-bottom: 6px; color: #2c2c2c; font-family: 'Roboto', sans-serif; font-size: 14px;">Teacher</label>
+                        <select id="filterTeacherReport" onchange="loadStudentReport()" style="width: 100%; padding: 10px 12px; border: 1px solid #dadce0; border-radius: 4px; font-family: 'Roboto', sans-serif; font-size: 14px;">
+                            <option value="">All Teachers</option>
+                        </select>
                     </div>
                     <div>
                         <label style="display: block; font-weight: 500; margin-bottom: 6px; color: #2c2c2c; font-family: 'Roboto', sans-serif; font-size: 14px;">Time Period</label>

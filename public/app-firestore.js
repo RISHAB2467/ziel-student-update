@@ -3305,6 +3305,7 @@ function displayStudents(filtered) {
 window.loadStudentReport = async function() {
     const selectedStudent = document.getElementById("searchStudentReport")?.value;
     const selectedStudentId = document.getElementById("selectedStudentId")?.value;
+    const selectedTeacher = document.getElementById("filterTeacherReport")?.value || "";
     const timePeriod = document.getElementById("timePeriodFilter")?.value || "30";
     const sortOrder = document.getElementById("sortOrderFilter")?.value || "desc";
     const div = document.getElementById("report");
@@ -3453,6 +3454,26 @@ window.loadStudentReport = async function() {
                 }
                 return true;
             });
+        }
+
+        // Extract unique teachers from results and populate dropdown
+        const allTeachers = [...new Set(results.map(e => e.teacherName || e.teacher).filter(Boolean))].sort();
+        const teacherSelect = document.getElementById("filterTeacherReport");
+        if (teacherSelect) {
+            const currentValue = teacherSelect.value;
+            teacherSelect.innerHTML = '<option value="">All Teachers</option>';
+            allTeachers.forEach(teacher => {
+                const option = document.createElement('option');
+                option.value = teacher;
+                option.textContent = teacher;
+                teacherSelect.appendChild(option);
+            });
+            teacherSelect.value = currentValue;
+        }
+
+        // Apply teacher filter if selected
+        if (selectedTeacher) {
+            results = results.filter(e => (e.teacherName || e.teacher) === selectedTeacher);
         }
 
         // Combine entries and payments, then sort by date
