@@ -99,10 +99,10 @@ self.addEventListener('message', (event) => {
             break;
         default:
             // Silently ignore unknown message types
-            return;
+            break;
     }
 
-    // Send response back to client
+    // Send response back to client for all handled messages
     if (event.ports && event.ports.length > 0) {
         event.ports[0].postMessage({ success: true });
     }
