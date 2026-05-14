@@ -2068,10 +2068,11 @@ window.renderBatchStudentSelector = function() {
         const actionStyle = isSelected
             ? 'background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9;'
             : 'background:#1e88e5; color:white; border:1px solid #1e88e5;';
+        const modeDisplay = student.mode ? `(${student.mode.charAt(0).toUpperCase() + student.mode.slice(1)})` : '';
 
         return `
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 8px; border-bottom:1px solid #eceff1;">
-                <span style="font-size:14px; color:#2c2c2c;">${student.name}</span>
+                <span style="font-size:14px; color:#2c2c2c;">${student.name} <span style="font-size:12px; color:#999;">${modeDisplay}</span></span>
                 <button type="button" onclick="toggleBatchStudentSelection('${student.id}')" style="padding:5px 10px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; ${actionStyle}">${actionText}</button>
             </div>
         `;
