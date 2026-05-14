@@ -2254,9 +2254,9 @@ function renderBatchAttendanceStudents(batchDoc) {
     (batchDoc.studentIds || []).forEach((studentId, index) => {
         const studentName = batchDoc.studentNames?.[index] || teacherStudentsDirectory.find((s) => s.id === studentId)?.name || 'Unknown Student';
         rows.push(`
-            <label style="display:flex; align-items:center; gap:10px; padding:8px 6px; border-bottom:1px solid #eceff1; cursor:pointer;">
-                <input class="batch-attendance-student-checkbox" type="checkbox" value="${studentId}" data-student-name="${studentName}" checked>
-                <span style="font-size:14px; color:#2c2c2c;">${studentName}</span>
+            <label style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; margin-bottom:8px; border:1px solid #e8eaed; border-radius:8px; background:#ffffff; cursor:pointer;">
+                <span style="font-size:14px; color:#2c2c2c; font-weight:500;">${studentName}</span>
+                <input class="batch-attendance-student-checkbox" type="checkbox" value="${studentId}" data-student-name="${studentName}" checked style="width:18px; height:18px; cursor:pointer; accent-color:#2e7d32;">
             </label>
         `);
     });
