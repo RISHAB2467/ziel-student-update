@@ -7346,7 +7346,7 @@ window.generateStudentPDF = async function() {
             const homework = entry.homeworkGiven === "yes" ? "Yes" : entry.homeworkGiven === "no" ? "No" : "N/A";
             content += `
                     <tr>
-                        <td>${entry.date}</td>
+                        <td>${formatDateMMDDYYYY(entry.date)}</td>
                         <td>${entry.dayOfWeek}</td>
                         <td>${entry.teacher}</td>
                         <td>${entry.subject}</td>
@@ -7615,7 +7615,7 @@ window.generateStudentPDFCustom = async function(selectedColumns) {
             content += `<tr>`;
             
             if (selectedColumns.date) {
-                content += `<td>${entry.date}<br><small style="color: #666;">${entry.dayOfWeek}</small></td>`;
+                content += `<td>${formatDateMMDDYYYY(entry.date)}<br><small style="color: #666;">${entry.dayOfWeek}</small></td>`;
             }
             if (selectedColumns.teacher) {
                 content += `<td>${entry.teacher}</td>`;
