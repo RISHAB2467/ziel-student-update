@@ -2295,6 +2295,18 @@ window.submitBatchAttendance = async function() {
         alert('Please select attendance date.');
         return;
     }
+    if (!subject) {
+        alert('Batch subject is required.');
+        return;
+    }
+    if (!timeFrom || !timeTo) {
+        alert('Batch time from and time to are required.');
+        return;
+    }
+    if (timeFrom >= timeTo) {
+        alert('Time From must be earlier than Time To.');
+        return;
+    }
 
     const batchDoc = teacherBatchesCache.find((item) => item.id === selectedBatchId);
     if (!batchDoc) {
@@ -2340,7 +2352,7 @@ window.submitBatchAttendance = async function() {
                 sheetMade: '',
                 homeworkGiven: '',
                 subject,
-                topic: topic || (isPresent ? 'Batch attendance entry' : 'Absent in batch attendance'),
+                topic,
                 attendanceStatus: isPresent ? 'present' : 'absent',
                 isBatchAttendance: true,
                 batchAttendance: true,
@@ -5266,6 +5278,8 @@ function displayAdminEntries() {
             '<span style="background: #d4edda; color: #155724; padding: 3px 8px; border-radius: 3px; font-size: 12px; font-weight: bold;">✓ Yes</span>' : 
             '<span style="background: #f8d7da; color: #721c24; padding: 3px 8px; border-radius: 3px; font-size: 12px; font-weight: bold;">✗ No</span>';
         const studentName = entry.studentName || entry.student || 'N/A';
+        const rawTopic = entry.topic || '';
+        const cleanedTopic = ['Batch attendance entry', 'Absent in batch attendance'].includes(rawTopic) ? '' : rawTopic;
         
         // Format date as DD/MM/YYYY
         let formattedDate = entry.date || 'N/A';
@@ -5330,8 +5344,8 @@ function displayAdminEntries() {
             <td style="padding: 12px 8px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${entry.subject || '-'}">
                 ${entry.subject || '-'}
             </td>
-            <td style="padding: 12px 8px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${entry.topic || '-'}">
-                ${entry.topic || '-'}
+            <td style="padding: 12px 8px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cleanedTopic || '-'}">
+                ${cleanedTopic || '-'}
             </td>
             <td style="padding: 12px 8px; text-align: center; white-space: nowrap;">
                 <button onclick="adminEditEntry('${entry.id}')" style="padding: 6px 12px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 2px; font-size: 12px;" title="Edit Entry">

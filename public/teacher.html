@@ -979,20 +979,20 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Subject</label>
-                    <input type="text" id="batchAttendanceSubject" placeholder="Enter subject">
+                    <label>Subject <span style="color: #ef5350;">*</span></label>
+                    <input type="text" id="batchAttendanceSubject" placeholder="Enter subject" required>
                 </div>
                 <div class="form-group">
                     <label>Topic</label>
                     <input type="text" id="batchAttendanceTopic" placeholder="Enter topic taught">
                 </div>
                 <div class="form-group">
-                    <label>Time From</label>
-                    <input type="time" id="batchAttendanceTimeFrom">
+                    <label>Time From <span style="color: #ef5350;">*</span></label>
+                    <input type="time" id="batchAttendanceTimeFrom" required>
                 </div>
                 <div class="form-group">
-                    <label>Time To</label>
-                    <input type="time" id="batchAttendanceTimeTo">
+                    <label>Time To <span style="color: #ef5350;">*</span></label>
+                    <input type="time" id="batchAttendanceTimeTo" required>
                 </div>
                 <div class="form-group">
                     <label>Classes Count</label>
@@ -1073,7 +1073,7 @@
 </div>
 
 <!-- App Logic with Firestore -->
-<script type="module" src="app-firestore.js?v=165"></script>
+<script type="module" src="app-firestore.js?v=166"></script>
 
 <!-- Libraries for PDF and Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

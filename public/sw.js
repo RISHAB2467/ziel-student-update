@@ -1,11 +1,11 @@
-const CACHE_NAME = 'ziel-v16';
+const CACHE_NAME = 'ziel-v17';
 const ASSETS = [
     '/',
     '/index.html',
     '/admin.html',
     '/teacher.html',
     '/styles.css',
-    '/app-firestore.js?v=165'
+    '/app-firestore.js?v=166'
 ];
 
 self.addEventListener('install', (e) => {
