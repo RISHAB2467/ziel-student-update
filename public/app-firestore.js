@@ -2058,28 +2058,63 @@ window.renderBatchStudentSelector = function() {
 
     if (!candidates.length) {
         listEl.innerHTML = '<div class="empty-state">No students found.</div>';
+        window.renderSelectedBatchStudents();
         return;
     }
 
     listEl.innerHTML = candidates.map((student) => {
-        const checked = selectedBatchStudentIds.has(student.id) ? 'checked' : '';
+        const isSelected = selectedBatchStudentIds.has(student.id);
+        const actionText = isSelected ? 'Added' : 'Add';
+        const actionStyle = isSelected
+            ? 'background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9;'
+            : 'background:#1e88e5; color:white; border:1px solid #1e88e5;';
+
         return `
-            <label style="display:flex; align-items:center; gap:10px; padding:8px 6px; border-bottom:1px solid #eceff1; cursor:pointer;">
-                <input type="checkbox" value="${student.id}" ${checked}>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 8px; border-bottom:1px solid #eceff1;">
                 <span style="font-size:14px; color:#2c2c2c;">${student.name}</span>
-            </label>
+                <button type="button" onclick="toggleBatchStudentSelection('${student.id}')" style="padding:5px 10px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; ${actionStyle}">${actionText}</button>
+            </div>
         `;
     }).join('');
 
-    listEl.querySelectorAll('input[type="checkbox"]').forEach((input) => {
-        input.addEventListener('change', () => {
-            if (input.checked) {
-                selectedBatchStudentIds.add(input.value);
-            } else {
-                selectedBatchStudentIds.delete(input.value);
-            }
-        });
-    });
+    window.renderSelectedBatchStudents();
+};
+
+window.toggleBatchStudentSelection = function(studentId) {
+    if (selectedBatchStudentIds.has(studentId)) {
+        selectedBatchStudentIds.delete(studentId);
+    } else {
+        selectedBatchStudentIds.add(studentId);
+    }
+    window.renderBatchStudentSelector();
+};
+
+window.removeBatchStudent = function(studentId) {
+    if (selectedBatchStudentIds.has(studentId)) {
+        selectedBatchStudentIds.delete(studentId);
+    }
+    window.renderBatchStudentSelector();
+};
+
+window.renderSelectedBatchStudents = function() {
+    const selectedListEl = document.getElementById('batchSelectedStudentsList');
+    const countEl = document.getElementById('batchSelectedCount');
+    if (!selectedListEl || !countEl) return;
+
+    const selectedStudents = teacherStudentsDirectory.filter((student) => selectedBatchStudentIds.has(student.id));
+    countEl.textContent = `${selectedStudents.length} selected`;
+
+    if (!selectedStudents.length) {
+        selectedListEl.innerHTML = '<div class="empty-state">No students selected yet.</div>';
+        return;
+    }
+
+    selectedListEl.innerHTML = selectedStudents.map((student) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 6px; border-bottom:1px solid #dcefe4;">
+            <span style="font-size:13px; color:#2c2c2c;">${student.name}</span>
+            <button type="button" onclick="removeBatchStudent('${student.id}')" style="padding:4px 8px; border:1px solid #ef9a9a; background:#ffebee; color:#c62828; border-radius:5px; font-size:11px; cursor:pointer;">Remove</button>
+        </div>
+    `).join('');
 };
 
 window.filterBatchStudentList = function() {
@@ -2178,6 +2213,7 @@ window.saveTeacherBatch = async function() {
         if (searchInput) searchInput.value = '';
         selectedBatchStudentIds = new Set();
         window.renderBatchStudentSelector();
+        window.renderSelectedBatchStudents();
         await window.loadTeacherBatches();
         alert('Batch created successfully.');
     } catch (error) {

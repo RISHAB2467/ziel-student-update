@@ -939,9 +939,23 @@
             <div class="form-group" style="margin-bottom: 12px;">
                 <label>Select Students</label>
                 <input type="text" id="batchStudentSearch" placeholder="Search students for batch..." oninput="filterBatchStudentList()" style="width: 100%; margin-bottom: 10px;">
-                <div id="batchStudentList" style="max-height: 220px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; background: #fafafa;"></div>
+                <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+                    <div style="border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa; min-height: 220px;">
+                        <div style="padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; color: #546e7a; font-weight: 600;">Available Students</div>
+                        <div id="batchStudentList" style="max-height: 260px; overflow-y: auto; padding: 6px;"></div>
+                    </div>
+                    <div style="border: 1px solid #d1e7dd; border-radius: 8px; background: #f6fffa; min-height: 220px;">
+                        <div style="padding: 10px 12px; border-bottom: 1px solid #d1e7dd; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size: 13px; color: #2e7d32; font-weight: 700;">Selected Students</span>
+                            <span id="batchSelectedCount" style="font-size: 12px; color: #2e7d32; font-weight: 600;">0 selected</span>
+                        </div>
+                        <div id="batchSelectedStudentsList" style="max-height: 260px; overflow-y: auto; padding: 6px 8px;">
+                            <div class="empty-state">No students selected yet.</div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <button type="button" class="submit-btn" onclick="saveTeacherBatch()">Save Batch</button>
+            <button type="button" class="submit-btn" onclick="saveTeacherBatch()">Create Batch</button>
         </div>
 
         <div class="entries-card" style="margin-top: 20px;">
