@@ -795,7 +795,7 @@
 
             html += `
                 <tr>
-                    <td>${entry.date}<br><small>${entry.dayOfWeek}</small></td>
+                    <td>${formatDateMMDDYYYY(entry.date)}<br><small>${entry.dayOfWeek}</small></td>
                     <td>${entry.teacherName}</td>
                     <td>${entry.studentName || entry.student}</td>
                     <td>${entry.classCount}</td>
@@ -834,7 +834,7 @@
 
             html += `
                 <tr>
-                    <td>${entry.date}<br><small>${entry.dayOfWeek}</small></td>
+                    <td>${formatDateMMDDYYYY(entry.date)}<br><small>${entry.dayOfWeek}</small></td>
                     <td>${entry.teacherName}</td>
                     <td>${entry.studentName || entry.student}</td>
                     <td>${entry.topic || '-'}</td>
@@ -971,7 +971,7 @@
             const duration = entry.timeFrom && entry.timeTo ? 
                 calculateDuration(entry.timeFrom, entry.timeTo).toFixed(2) : '0';
             
-            csv += `"${entry.date}","${entry.teacherName}","${entry.studentName || entry.student}",${entry.classCount},"${entry.timeFrom}","${entry.timeTo}",${duration},"${entry.sheetMade}","${entry.payment || ''}","${entry.topic || ''}"\\n`;
+            csv += `"${formatDateMMDDYYYY(entry.date)}","${entry.teacherName}","${entry.studentName || entry.student}",${entry.classCount},"${entry.timeFrom}","${entry.timeTo}",${duration},"${entry.sheetMade}","${entry.payment || ''}","${entry.topic || ''}"\\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv' });
