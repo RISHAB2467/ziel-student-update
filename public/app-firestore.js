@@ -266,6 +266,11 @@ let allTeachersUnsubscribe = null;
 let allStudentsUnsubscribe = null;
 let bulkUnlockInProgress = false;
 let accountabilityTeacherRows = []; // Store all teachers for filtering
+let teacherStudentsDirectory = [];
+let teacherBatchesCache = [];
+let allBatchAttendanceEntries = [];
+let filteredBatchAttendanceEntries = [];
+let selectedBatchStudentIds = new Set();
 
 const realtimeCollections = new Set();
 const USER_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
@@ -1564,6 +1569,7 @@ window.loadLists = async function() {
         const studentsQuery = query(collection(db, "students"), where("status", "==", "active"));
         const studentsSnapshot = await getDocs(studentsQuery);
         const students = studentsSnapshot.docs.map(doc => ({
+            id: doc.id,
             name: doc.data().name,
             mode: doc.data().mode || 'online',
             offlineCentreName: doc.data().offlineCentreName || ''
@@ -1618,6 +1624,17 @@ window.loadLists = async function() {
 
         // Initialize searchable student dropdown
         initStudentSearch(students);
+
+        teacherStudentsDirectory = students;
+
+        if (role === "teacher") {
+            if (typeof window.renderBatchStudentSelector === 'function') {
+                window.renderBatchStudentSelector();
+            }
+            if (typeof window.loadTeacherBatches === 'function') {
+                window.loadTeacherBatches();
+            }
+        }
         
         // Initialize subject autocomplete
         loadCustomSubjects().then(() => {
@@ -2027,6 +2044,295 @@ window.loadStudentsForTeacher = async function() {
         console.error("Error loading students:", error);
     }
 }
+
+window.renderBatchStudentSelector = function() {
+    const listEl = document.getElementById('batchStudentList');
+    if (!listEl) return;
+
+    const queryText = (document.getElementById('batchStudentSearch')?.value || '').trim().toLowerCase();
+
+    let candidates = teacherStudentsDirectory;
+    if (queryText) {
+        candidates = candidates.filter((student) => (student.name || '').toLowerCase().includes(queryText));
+    }
+
+    if (!candidates.length) {
+        listEl.innerHTML = '<div class="empty-state">No students found.</div>';
+        return;
+    }
+
+    listEl.innerHTML = candidates.map((student) => {
+        const checked = selectedBatchStudentIds.has(student.id) ? 'checked' : '';
+        return `
+            <label style="display:flex; align-items:center; gap:10px; padding:8px 6px; border-bottom:1px solid #eceff1; cursor:pointer;">
+                <input type="checkbox" value="${student.id}" ${checked}>
+                <span style="font-size:14px; color:#2c2c2c;">${student.name}</span>
+            </label>
+        `;
+    }).join('');
+
+    listEl.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.addEventListener('change', () => {
+            if (input.checked) {
+                selectedBatchStudentIds.add(input.value);
+            } else {
+                selectedBatchStudentIds.delete(input.value);
+            }
+        });
+    });
+};
+
+window.filterBatchStudentList = function() {
+    window.renderBatchStudentSelector();
+};
+
+function renderTeacherBatchList() {
+    const listEl = document.getElementById('teacherBatchList');
+    const selectEl = document.getElementById('batchAttendanceSelect');
+    if (!listEl || !selectEl) return;
+
+    selectEl.innerHTML = '<option value="">-- Select Batch --</option>';
+    teacherBatchesCache.forEach((batchDoc) => {
+        selectEl.innerHTML += `<option value="${batchDoc.id}">${batchDoc.batchName} (${(batchDoc.studentNames || []).length})</option>`;
+    });
+
+    if (!teacherBatchesCache.length) {
+        listEl.innerHTML = '<div class="empty-state">No batches created yet.</div>';
+        return;
+    }
+
+    listEl.innerHTML = teacherBatchesCache.map((batchDoc) => {
+        const students = (batchDoc.studentNames || []).join(', ');
+        return `
+            <div style="border:1px solid #e0e0e0; border-radius:8px; padding:12px; margin-bottom:10px; background:#fff;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                    <div>
+                        <div style="font-weight:600; color:#2c2c2c; margin-bottom:6px;">${batchDoc.batchName}</div>
+                        <div style="font-size:13px; color:#546e7a; line-height:1.5;">${students || 'No students mapped'}</div>
+                    </div>
+                    <button type="button" onclick="deleteTeacherBatch('${batchDoc.id}')" style="padding:6px 10px; border:1px solid #ef9a9a; background:#ffebee; color:#c62828; border-radius:6px; cursor:pointer;">Delete</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.loadTeacherBatches = async function() {
+    const role = localStorage.getItem('role');
+    const teacherId = localStorage.getItem('teacherId');
+    if (role !== 'teacher' || !teacherId) return;
+
+    try {
+        const snapshot = await getDocs(query(collection(db, 'teacher_batches'), where('teacherId', '==', teacherId)));
+        teacherBatchesCache = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        teacherBatchesCache.sort((a, b) => (a.batchName || '').localeCompare(b.batchName || ''));
+        renderTeacherBatchList();
+    } catch (error) {
+        console.error('Error loading teacher batches:', error);
+        const listEl = document.getElementById('teacherBatchList');
+        if (listEl) {
+            listEl.innerHTML = '<div class="empty-state" style="color:#c62828;">Unable to load batches.</div>';
+        }
+    }
+};
+
+window.saveTeacherBatch = async function() {
+    const role = localStorage.getItem('role');
+    const teacherId = localStorage.getItem('teacherId');
+    const teacherName = localStorage.getItem('teacherName') || localStorage.getItem('currentTeacherName') || '';
+    if (role !== 'teacher' || !teacherId) {
+        alert('Teacher session missing. Please login again.');
+        return;
+    }
+
+    const batchName = (document.getElementById('batchNameInput')?.value || '').trim();
+    if (!batchName) {
+        alert('Please enter a batch name.');
+        return;
+    }
+
+    const selectedIds = Array.from(selectedBatchStudentIds);
+    if (!selectedIds.length) {
+        alert('Please select at least one student for this batch.');
+        return;
+    }
+
+    const selectedStudents = teacherStudentsDirectory.filter((student) => selectedIds.includes(student.id));
+    const studentNames = selectedStudents.map((student) => student.name);
+
+    try {
+        await addDoc(collection(db, 'teacher_batches'), {
+            teacherId,
+            teacherName,
+            batchName,
+            studentIds: selectedIds,
+            studentNames,
+            status: 'active',
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
+        });
+
+        const batchNameInput = document.getElementById('batchNameInput');
+        const searchInput = document.getElementById('batchStudentSearch');
+        if (batchNameInput) batchNameInput.value = '';
+        if (searchInput) searchInput.value = '';
+        selectedBatchStudentIds = new Set();
+        window.renderBatchStudentSelector();
+        await window.loadTeacherBatches();
+        alert('Batch created successfully.');
+    } catch (error) {
+        console.error('Error creating batch:', error);
+        alert('Unable to create batch right now.');
+    }
+};
+
+window.deleteTeacherBatch = async function(batchId) {
+    const role = localStorage.getItem('role');
+    const teacherId = localStorage.getItem('teacherId');
+    if (role !== 'teacher' || !teacherId) return;
+
+    const target = teacherBatchesCache.find((batchDoc) => batchDoc.id === batchId);
+    if (!target) return;
+
+    if (!confirm(`Delete batch "${target.batchName}"?`)) return;
+
+    try {
+        await deleteDoc(doc(db, 'teacher_batches', batchId));
+        await window.loadTeacherBatches();
+    } catch (error) {
+        console.error('Error deleting batch:', error);
+        alert('Unable to delete batch right now.');
+    }
+};
+
+function renderBatchAttendanceStudents(batchDoc) {
+    const container = document.getElementById('batchAttendanceStudents');
+    if (!container) return;
+
+    if (!batchDoc || !(batchDoc.studentIds || []).length) {
+        container.innerHTML = '<div class="empty-state">No students mapped to this batch.</div>';
+        return;
+    }
+
+    const rows = [];
+    (batchDoc.studentIds || []).forEach((studentId, index) => {
+        const studentName = batchDoc.studentNames?.[index] || teacherStudentsDirectory.find((s) => s.id === studentId)?.name || 'Unknown Student';
+        rows.push(`
+            <label style="display:flex; align-items:center; gap:10px; padding:8px 6px; border-bottom:1px solid #eceff1; cursor:pointer;">
+                <input class="batch-attendance-student-checkbox" type="checkbox" value="${studentId}" data-student-name="${studentName}" checked>
+                <span style="font-size:14px; color:#2c2c2c;">${studentName}</span>
+            </label>
+        `);
+    });
+
+    container.innerHTML = rows.join('');
+}
+
+window.onBatchAttendanceSelectionChange = function() {
+    const selectedBatchId = document.getElementById('batchAttendanceSelect')?.value;
+    const batchDoc = teacherBatchesCache.find((item) => item.id === selectedBatchId);
+    renderBatchAttendanceStudents(batchDoc);
+};
+
+window.submitBatchAttendance = async function() {
+    const role = localStorage.getItem('role');
+    const teacherId = localStorage.getItem('teacherId');
+    const teacherName = localStorage.getItem('teacherName') || localStorage.getItem('currentTeacherName') || '';
+    if (role !== 'teacher' || !teacherId || !teacherName) {
+        alert('Teacher session missing. Please login again.');
+        return;
+    }
+
+    const selectedBatchId = document.getElementById('batchAttendanceSelect')?.value || '';
+    const attendanceDate = document.getElementById('batchAttendanceDate')?.value || '';
+    const subject = (document.getElementById('batchAttendanceSubject')?.value || '').trim();
+    const topic = (document.getElementById('batchAttendanceTopic')?.value || '').trim();
+    const timeFrom = (document.getElementById('batchAttendanceTimeFrom')?.value || '').trim();
+    const timeTo = (document.getElementById('batchAttendanceTimeTo')?.value || '').trim();
+    const classCountValue = parseFloat(document.getElementById('batchAttendanceClassCount')?.value || '1');
+
+    if (!selectedBatchId) {
+        alert('Please select a batch.');
+        return;
+    }
+    if (!attendanceDate) {
+        alert('Please select attendance date.');
+        return;
+    }
+
+    const batchDoc = teacherBatchesCache.find((item) => item.id === selectedBatchId);
+    if (!batchDoc) {
+        alert('Selected batch not found. Please refresh and try again.');
+        return;
+    }
+
+    const studentInputs = Array.from(document.querySelectorAll('#batchAttendanceStudents .batch-attendance-student-checkbox'));
+    if (!studentInputs.length) {
+        alert('No students available in this batch.');
+        return;
+    }
+
+    try {
+        const parsedDate = new Date(attendanceDate + 'T00:00:00');
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayOfWeek = days[parsedDate.getDay()];
+        const write = writeBatch(db);
+        const entriesRef = collection(db, 'entries');
+
+        let presentCount = 0;
+        let absentCount = 0;
+
+        studentInputs.forEach((input) => {
+            const isPresent = input.checked;
+            const studentId = input.value;
+            const studentName = input.dataset.studentName || 'Unknown Student';
+
+            if (isPresent) presentCount += 1;
+            else absentCount += 1;
+
+            const entryDocRef = doc(entriesRef);
+            write.set(entryDocRef, {
+                teacherId,
+                teacherName,
+                studentId,
+                studentName,
+                date: attendanceDate,
+                dayOfWeek,
+                timeFrom,
+                timeTo,
+                classCount: isPresent ? (isNaN(classCountValue) ? 1 : classCountValue) : 0,
+                sheetMade: '',
+                homeworkGiven: '',
+                subject,
+                topic: topic || (isPresent ? 'Batch attendance entry' : 'Absent in batch attendance'),
+                attendanceStatus: isPresent ? 'present' : 'absent',
+                isBatchAttendance: true,
+                batchAttendance: true,
+                batchId: batchDoc.id,
+                batchName: batchDoc.batchName,
+                createdAt: Timestamp.now()
+            });
+        });
+
+        write.update(doc(db, 'teachers', teacherId), {
+            hasSubmittedToday: true,
+            isOnLeave: false,
+            isLocked: false,
+            lockDate: null,
+            lastSubmissionDate: attendanceDate || getKolkataDateISO()
+        });
+
+        await write.commit();
+        alert(`Batch attendance submitted. Present: ${presentCount}, Absent: ${absentCount}`);
+
+        if (typeof window.loadRecentEntries === 'function') {
+            window.loadRecentEntries();
+        }
+    } catch (error) {
+        console.error('Error submitting batch attendance:', error);
+        alert('Unable to submit batch attendance right now.');
+    }
+};
 
 // Prevent double submission flag
 let isSavingEntry = false;
@@ -3792,8 +4098,137 @@ window.loadStudentReport = async function() {
     }
 }
 
+async function loadBatchAttendanceAdmin() {
+    const tableBody = document.getElementById('batchAttendanceTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '<tr><td colspan="7" class="empty-state" style="padding: 36px; text-align: center;">Loading batch attendance...</td></tr>';
+
+    try {
+        const snapshot = await getDocs(query(collection(db, 'entries'), where('isBatchAttendance', '==', true)));
+        allBatchAttendanceEntries = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        allBatchAttendanceEntries.sort((a, b) => {
+            const dateA = a.date || '';
+            const dateB = b.date || '';
+            if (dateA !== dateB) return dateB.localeCompare(dateA);
+            const tsA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const tsB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return tsB - tsA;
+        });
+
+        const teacherSelect = document.getElementById('batchFilterTeacher');
+        const batchSelect = document.getElementById('batchFilterBatch');
+        if (teacherSelect) {
+            const currentTeacher = teacherSelect.value;
+            const teachers = [...new Set(allBatchAttendanceEntries.map((item) => item.teacherName).filter(Boolean))].sort();
+            teacherSelect.innerHTML = '<option value="">All Teachers</option>';
+            teachers.forEach((name) => {
+                teacherSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+            teacherSelect.value = currentTeacher;
+        }
+
+        if (batchSelect) {
+            const currentBatch = batchSelect.value;
+            const batches = [...new Set(allBatchAttendanceEntries.map((item) => item.batchName).filter(Boolean))].sort();
+            batchSelect.innerHTML = '<option value="">All Batches</option>';
+            batches.forEach((name) => {
+                batchSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+            batchSelect.value = currentBatch;
+        }
+
+        window.applyBatchAttendanceFilters();
+    } catch (error) {
+        console.error('Error loading batch attendance analytics:', error);
+        tableBody.innerHTML = '<tr><td colspan="7" class="empty-state" style="padding: 36px; text-align: center; color: #c62828;">Unable to load batch attendance records.</td></tr>';
+    }
+}
+
+function renderBatchAttendanceTable() {
+    const tableBody = document.getElementById('batchAttendanceTableBody');
+    if (!tableBody) return;
+
+    if (!filteredBatchAttendanceEntries.length) {
+        tableBody.innerHTML = '<tr><td colspan="7" class="empty-state" style="padding: 36px; text-align: center;">No batch attendance records found.</td></tr>';
+        return;
+    }
+
+    tableBody.innerHTML = filteredBatchAttendanceEntries.map((entry) => {
+        const status = (entry.attendanceStatus || (entry.classCount > 0 ? 'present' : 'absent')).toLowerCase();
+        const statusColor = status === 'present' ? '#2e7d32' : '#c62828';
+        const statusBg = status === 'present' ? '#e8f5e9' : '#ffebee';
+        const safeStatus = status === 'present' ? 'Present' : 'Absent';
+
+        return `
+            <tr style="border-bottom: 1px solid #eceff1;">
+                <td style="padding: 12px; font-size: 13px; color: #37474f;">${entry.date || '-'}</td>
+                <td style="padding: 12px; font-size: 13px; color: #37474f;">${entry.teacherName || '-'}</td>
+                <td style="padding: 12px; font-size: 13px; color: #37474f;">${entry.batchName || '-'}</td>
+                <td style="padding: 12px; font-size: 13px; color: #37474f;">${entry.studentName || entry.student || '-'}</td>
+                <td style="padding: 12px; font-size: 13px; color: #37474f;">${entry.subject || '-'}</td>
+                <td style="padding: 12px; text-align: center;"><span style="display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; color:${statusColor}; background:${statusBg};">${safeStatus}</span></td>
+                <td style="padding: 12px; text-align: center; font-size: 13px; color: #37474f;">${entry.classCount ?? 0}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function updateBatchAttendanceAnalytics() {
+    const total = filteredBatchAttendanceEntries.length;
+    let present = 0;
+    let absent = 0;
+
+    filteredBatchAttendanceEntries.forEach((entry) => {
+        const status = (entry.attendanceStatus || (entry.classCount > 0 ? 'present' : 'absent')).toLowerCase();
+        if (status === 'present') present += 1;
+        else absent += 1;
+    });
+
+    const rate = total ? `${((present / total) * 100).toFixed(1)}%` : '0%';
+
+    const recordsEl = document.getElementById('batchAnalyticsRecords');
+    const presentEl = document.getElementById('batchAnalyticsPresent');
+    const absentEl = document.getElementById('batchAnalyticsAbsent');
+    const rateEl = document.getElementById('batchAnalyticsRate');
+
+    if (recordsEl) recordsEl.textContent = String(total);
+    if (presentEl) presentEl.textContent = String(present);
+    if (absentEl) absentEl.textContent = String(absent);
+    if (rateEl) rateEl.textContent = rate;
+}
+
+window.applyBatchAttendanceFilters = function() {
+    const teacher = document.getElementById('batchFilterTeacher')?.value || '';
+    const batchName = document.getElementById('batchFilterBatch')?.value || '';
+    const subjectText = (document.getElementById('batchFilterSubject')?.value || '').trim().toLowerCase();
+    const dateFrom = document.getElementById('batchFilterDateFrom')?.value || '';
+    const dateTo = document.getElementById('batchFilterDateTo')?.value || '';
+
+    filteredBatchAttendanceEntries = allBatchAttendanceEntries.filter((entry) => {
+        if (teacher && entry.teacherName !== teacher) return false;
+        if (batchName && entry.batchName !== batchName) return false;
+        if (subjectText && !(entry.subject || '').toLowerCase().includes(subjectText)) return false;
+        if (dateFrom && (entry.date || '') < dateFrom) return false;
+        if (dateTo && (entry.date || '') > dateTo) return false;
+        return true;
+    });
+
+    updateBatchAttendanceAnalytics();
+    renderBatchAttendanceTable();
+};
+
+window.resetBatchAttendanceFilters = function() {
+    const fields = ['batchFilterTeacher', 'batchFilterBatch', 'batchFilterSubject', 'batchFilterDateFrom', 'batchFilterDateTo'];
+    fields.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    window.applyBatchAttendanceFilters();
+};
+
 // Show tab
-window.showTab = function(tabName) {
+window.showTab = function(tabName, buttonElement) {
     // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.style.display = 'none';
@@ -3805,10 +4240,20 @@ window.showTab = function(tabName) {
     });
 
     // Show selected tab
-    document.getElementById(tabName + '-tab').style.display = 'block';
+    const selectedTab = document.getElementById(tabName + '-tab');
+    if (selectedTab) {
+        selectedTab.style.display = 'block';
+    }
 
     // Add active class to clicked button
-    event.target.classList.add('active');
+    if (buttonElement) {
+        buttonElement.classList.add('active');
+    } else {
+        const matchedButton = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+        if (matchedButton) {
+            matchedButton.classList.add('active');
+        }
+    }
 
     // Load data based on tab
     if (tabName === 'teachers') {
@@ -3820,6 +4265,8 @@ window.showTab = function(tabName) {
         filterStudents();
     } else if (tabName === 'entries') {
         loadAdminEntries();
+    } else if (tabName === 'batchattendance') {
+        loadBatchAttendanceAdmin();
     } else if (tabName === 'reports') {
         loadStudentsForReport();
     } else if (tabName === 'classesdata') {

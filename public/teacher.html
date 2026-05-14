@@ -693,9 +693,10 @@
 
     <!-- Tab Navigation -->
     <div class="tab-navigation">
-        <button class="tab-button active" onclick="switchTab('logEntry')">Log Entry</button>
-        <button class="tab-button" onclick="switchTab('viewSearch')">View / Search / Download</button>
-        <button class="tab-button" onclick="switchTab('doubtSessions')">Doubt/Demo Sessions</button>
+        <button class="tab-button active" data-tab="logEntry" onclick="switchTab('logEntry')">Log Entry</button>
+        <button class="tab-button" data-tab="viewSearch" onclick="switchTab('viewSearch')">View / Search / Download</button>
+        <button class="tab-button" data-tab="batches" onclick="switchTab('batches')">Batches</button>
+        <button class="tab-button" data-tab="doubtSessions" onclick="switchTab('doubtSessions')">Doubt/Demo Sessions</button>
     </div>
 
     <!-- TAB 1: Log Entry (Data Filling) -->
@@ -927,7 +928,76 @@
         </div>
     </div>
 
-    <!-- TAB 3: Doubt/Demo Sessions -->
+    <!-- TAB 3: Batches -->
+    <div id="batchesTab" class="tab-content">
+        <div class="form-card">
+            <h3>Create Student Batch</h3>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label>Batch Name</label>
+                <input type="text" id="batchNameInput" placeholder="e.g., Class 10 Science - Morning" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label>Select Students</label>
+                <input type="text" id="batchStudentSearch" placeholder="Search students for batch..." oninput="filterBatchStudentList()" style="width: 100%; margin-bottom: 10px;">
+                <div id="batchStudentList" style="max-height: 220px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; background: #fafafa;"></div>
+            </div>
+            <button type="button" class="submit-btn" onclick="saveTeacherBatch()">Save Batch</button>
+        </div>
+
+        <div class="entries-card" style="margin-top: 20px;">
+            <h3>My Batches</h3>
+            <div id="teacherBatchList">
+                <div class="empty-state">Loading batches...</div>
+            </div>
+        </div>
+
+        <div class="form-card" style="margin-top: 20px;">
+            <h3>Batch Attendance (AI Assisted)</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="batchAttendanceDate">
+                </div>
+                <div class="form-group">
+                    <label>Select Batch</label>
+                    <select id="batchAttendanceSelect" onchange="onBatchAttendanceSelectionChange()">
+                        <option value="">-- Select Batch --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Subject</label>
+                    <input type="text" id="batchAttendanceSubject" placeholder="Enter subject">
+                </div>
+                <div class="form-group">
+                    <label>Topic</label>
+                    <input type="text" id="batchAttendanceTopic" placeholder="Enter topic taught">
+                </div>
+                <div class="form-group">
+                    <label>Time From</label>
+                    <input type="time" id="batchAttendanceTimeFrom">
+                </div>
+                <div class="form-group">
+                    <label>Time To</label>
+                    <input type="time" id="batchAttendanceTimeTo">
+                </div>
+                <div class="form-group">
+                    <label>Classes Count</label>
+                    <input type="number" id="batchAttendanceClassCount" min="0.5" step="0.5" value="1">
+                </div>
+            </div>
+
+            <div style="margin-top: 12px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Students in Batch (checked = present, uncheck = absent)</label>
+                <div id="batchAttendanceStudents" style="max-height: 260px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; background: #fafafa;">
+                    <div class="empty-state">Select a batch to auto-load students.</div>
+                </div>
+            </div>
+
+            <button type="button" class="submit-btn" style="margin-top: 16px;" onclick="submitBatchAttendance()">Submit Batch Attendance</button>
+        </div>
+    </div>
+
+    <!-- TAB 4: Doubt/Demo Sessions -->
     <div id="doubtSessionsTab" class="tab-content">
         <div class="form-card">
             <h3>Add Doubt/Demo Session</h3>
@@ -989,7 +1059,7 @@
 </div>
 
 <!-- App Logic with Firestore -->
-<script type="module" src="app-firestore.js?v=164"></script>
+<script type="module" src="app-firestore.js?v=165"></script>
 
 <!-- Libraries for PDF and Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1009,20 +1079,27 @@
             btn.classList.remove('active');
         });
         
+        const activeButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+        if (activeButton) {
+            activeButton.classList.add('active');
+        }
+
         // Show selected tab
         if (tabName === 'logEntry') {
             document.getElementById('logEntryTab').classList.add('active');
-            document.querySelectorAll('.tab-button')[0].classList.add('active');
         } else if (tabName === 'viewSearch') {
             document.getElementById('viewSearchTab').classList.add('active');
-            document.querySelectorAll('.tab-button')[1].classList.add('active');
             // Load entries when switching to this tab
             if (typeof window.loadRecentEntries === 'function') {
                 window.loadRecentEntries();
             }
+        } else if (tabName === 'batches') {
+            document.getElementById('batchesTab').classList.add('active');
+            if (typeof window.loadTeacherBatches === 'function') {
+                window.loadTeacherBatches();
+            }
         } else if (tabName === 'doubtSessions') {
             document.getElementById('doubtSessionsTab').classList.add('active');
-            document.querySelectorAll('.tab-button')[2].classList.add('active');
             // Load doubt sessions when switching to this tab
             if (typeof window.loadDoubtSessions === 'function') {
                 window.loadDoubtSessions();
@@ -1046,6 +1123,10 @@
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('date').value = today;
         document.getElementById('date').dispatchEvent(new Event('change'));
+        const batchDateInput = document.getElementById('batchAttendanceDate');
+        if (batchDateInput) {
+            batchDateInput.value = today;
+        }
 
         // Display teacher info and welcome greeting
         const teacherName = localStorage.getItem('teacherName');
