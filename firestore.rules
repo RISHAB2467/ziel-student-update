@@ -31,6 +31,11 @@ service cloud.firestore {
       allow read, write: if isAppAllowed();
     }
 
+    // Rules for teacher batch management
+    match /teacher_batches/{batchId} {
+      allow read, write: if isAppAllowed();
+    }
+
     // Rules for settings used by app logic
     match /settings/{settingId} {
       allow read, write: if isAppAllowed();
