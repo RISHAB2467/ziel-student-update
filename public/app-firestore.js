@@ -239,13 +239,13 @@ function formatDateDDMMYYYY(date) {
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
-// Helper function to format date as MM/DD/YYYY
+// Helper function to format date as DD/MM/YYYY
 function formatDateMMDDYYYY(dateStr) {
     if (!dateStr || dateStr === 'N/A') return dateStr || 'N/A';
     // Handle YYYY-MM-DD format
     const parts = ('' + dateStr).split('-');
     if (parts.length === 3) {
-        return `${String(parts[1]).padStart(2, '0')}/${String(parts[2]).padStart(2, '0')}/${parts[0]}`;
+        return `${String(parts[2]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[0]}`;
     }
     return dateStr;
 }
