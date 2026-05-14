@@ -978,6 +978,12 @@
                         <option value="">-- Select Batch --</option>
                     </select>
                 </div>
+                <div class="form-group" style="grid-column: 1 / -1; margin-top: -4px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Students in Batch (checked = present, uncheck = absent)</label>
+                    <div id="batchAttendanceStudents" style="max-height: 260px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; background: #fafafa;">
+                        <div class="empty-state">Select a batch to auto-load students.</div>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label>Subject <span style="color: #ef5350;">*</span></label>
                     <input type="text" id="batchAttendanceSubject" placeholder="Enter subject" required>
@@ -997,13 +1003,6 @@
                 <div class="form-group">
                     <label>Classes Count</label>
                     <input type="number" id="batchAttendanceClassCount" min="0.5" step="0.5" value="1">
-                </div>
-            </div>
-
-            <div style="margin-top: 12px;">
-                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Students in Batch (checked = present, uncheck = absent)</label>
-                <div id="batchAttendanceStudents" style="max-height: 260px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; background: #fafafa;">
-                    <div class="empty-state">Select a batch to auto-load students.</div>
                 </div>
             </div>
 
