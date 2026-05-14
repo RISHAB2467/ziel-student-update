@@ -239,6 +239,17 @@ function formatDateDDMMYYYY(date) {
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
+// Helper function to format date as MM/DD/YYYY
+function formatDateMMDDYYYY(dateStr) {
+    if (!dateStr || dateStr === 'N/A') return dateStr || 'N/A';
+    // Handle YYYY-MM-DD format
+    const parts = ('' + dateStr).split('-');
+    if (parts.length === 3) {
+        return `${String(parts[1]).padStart(2, '0')}/${String(parts[2]).padStart(2, '0')}/${parts[0]}`;
+    }
+    return dateStr;
+}
+
 // Helper function to format date and time as DD/MM/YYYY HH:MM:SS
 function formatDateTimeDDMMYYYY(date) {
     if (!date) return 'N/A';
@@ -2657,7 +2668,7 @@ window.loadRecentEntries = async function() {
                 <div class="entry-item">
                     <div class="entry-header">
                         <div>
-                            <span class="entry-date">${e.date || 'N/A'}</span>
+                            <span class="entry-date">${formatDateMMDDYYYY(e.date) || 'N/A'}</span>
                             <span class="entry-day">${e.dayOfWeek || ''}</span>
                         </div>
                     </div>
@@ -4215,7 +4226,7 @@ function renderBatchAttendanceTable() {
 
         return `
             <tr style="border-bottom: 1px solid #eceff1;">
-                <td style="padding: 12px; font-size: 13px; color: #37474f;">${entry.date || '-'}</td>
+                <td style="padding: 12px; font-size: 13px; color: #37474f;">${formatDateMMDDYYYY(entry.date) || '-'}</td>
                 <td style="padding: 12px; font-size: 13px; color: #37474f;">${entry.teacherName || '-'}</td>
                 <td style="padding: 12px; font-size: 13px; color: #37474f;">${entry.batchName || '-'}</td>
                 <td style="padding: 12px; font-size: 13px; color: #37474f;">${entry.studentName || entry.student || '-'}</td>
@@ -5286,14 +5297,8 @@ function displayAdminEntries() {
         const rawTopic = entry.topic || '';
         const cleanedTopic = ['Batch attendance entry', 'Absent in batch attendance'].includes(rawTopic) ? '' : rawTopic;
         
-        // Format date as DD/MM/YYYY
-        let formattedDate = entry.date || 'N/A';
-        if (entry.date && entry.date !== 'N/A') {
-            const dateParts = ('' + entry.date).split('-').map(Number);
-            if (dateParts.length >= 3) {
-                formattedDate = `${String(dateParts[2]).padStart(2, '0')}/${String(dateParts[1]).padStart(2, '0')}/${dateParts[0]}`;
-            }
-        }
+        // Format date as MM/DD/YYYY using helper function
+        const formattedDate = formatDateMMDDYYYY(entry.date) || 'N/A';
         
         return `
         <tr style="background: ${rowBg}; border-bottom: 1px solid #dee2e6;">
@@ -6115,7 +6120,7 @@ function displayEntries(entries) {
                 <div class="entry-top">
                     <div class="entry-field">
                         <div class="entry-label">Date & Day</div>
-                        <div class="entry-value large">${entry.date || 'N/A'}<br><small style="color: #7f8c8d;">${entry.dayOfWeek || ''}</small></div>
+                        <div class="entry-value large">${formatDateMMDDYYYY(entry.date) || 'N/A'}<br><small style="color: #7f8c8d;">${entry.dayOfWeek || ''}</small></div>
                     </div>
                     <div class="entry-field">
                         <div class="entry-label">Teacher</div>
