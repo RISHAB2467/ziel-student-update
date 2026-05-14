@@ -2287,6 +2287,8 @@ window.submitBatchAttendance = async function() {
     const timeFrom = (document.getElementById('batchAttendanceTimeFrom')?.value || '').trim();
     const timeTo = (document.getElementById('batchAttendanceTimeTo')?.value || '').trim();
     const classCountValue = parseFloat(document.getElementById('batchAttendanceClassCount')?.value || '1');
+    const cwDocShared = document.querySelector('input[name="cwDocShared"]:checked')?.value || '';
+    const hwGiven = document.querySelector('input[name="hwGiven"]:checked')?.value || '';
 
     if (!selectedBatchId) {
         alert('Please select a batch.');
@@ -2354,6 +2356,8 @@ window.submitBatchAttendance = async function() {
                 homeworkGiven: '',
                 subject,
                 topic,
+                cwDocumentShared: cwDocShared,
+                homeworkGiven: hwGiven,
                 attendanceStatus: isPresent ? 'present' : 'absent',
                 isBatchAttendance: true,
                 batchAttendance: true,

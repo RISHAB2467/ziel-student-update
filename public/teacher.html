@@ -1004,6 +1004,32 @@
                     <label>Classes Count</label>
                     <input type="number" id="batchAttendanceClassCount" min="0.5" step="0.5" value="1">
                 </div>
+                <div class="form-group">
+                    <label>C/W Document Shared</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="cwDocYes" name="cwDocShared" value="Yes">
+                            <label for="cwDocYes">Yes</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="cwDocNo" name="cwDocShared" value="No">
+                            <label for="cwDocNo">No</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Homework Given?</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="hwGivenYes" name="hwGiven" value="Yes">
+                            <label for="hwGivenYes">Yes</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="hwGivenNo" name="hwGiven" value="No">
+                            <label for="hwGivenNo">No</label>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <button type="button" class="submit-btn" style="margin-top: 16px;" onclick="submitBatchAttendance()">Submit Batch Attendance</button>
