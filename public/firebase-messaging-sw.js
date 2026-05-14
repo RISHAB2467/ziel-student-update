@@ -90,20 +90,31 @@ self.addEventListener('message', (event) => {
     switch (type) {
         case 'SKIP_WAITING':
             self.skipWaiting();
-            break;
+            if (event.ports && event.ports.length > 0) {
+                event.ports[0].postMessage({ success: true });
+            }
+            return;
         case 'CLEAR_CACHE':
-            // Handle cache clearing if needed
-            caches.keys().then((cacheNames) => {
-                cacheNames.forEach((cacheName) => caches.delete(cacheName));
-            });
-            break;
+            event.waitUntil(
+                caches.keys().then((cacheNames) => {
+                    return Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+                }).then(() => {
+                    if (event.ports && event.ports.length > 0) {
+                        event.ports[0].postMessage({ success: true });
+                    }
+                }).catch((error) => {
+                    console.error('Cache clear failed:', error);
+                    if (event.ports && event.ports.length > 0) {
+                        event.ports[0].postMessage({ success: false, error: error.message });
+                    }
+                })
+            );
+            return;
         default:
-            // Silently ignore unknown message types
-            break;
-    }
-
-    // Send response back to client for all handled messages
-    if (event.ports && event.ports.length > 0) {
-        event.ports[0].postMessage({ success: true });
+            // Silently ignore unknown message types - send immediate response
+            if (event.ports && event.ports.length > 0) {
+                event.ports[0].postMessage({ success: false, message: 'Unknown message type' });
+            }
+            return;
     }
 });
