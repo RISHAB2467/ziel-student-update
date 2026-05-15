@@ -931,31 +931,36 @@
     <!-- TAB 3: Batches -->
     <div id="batchesTab" class="tab-content">
         <div class="form-card">
-            <h3>Create Student Batch</h3>
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label>Batch Name</label>
-                <input type="text" id="batchNameInput" placeholder="e.g., Class 10 Science - Morning" style="width: 100%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <h3 style="margin:0; padding:0; border:0;">Create Student Batch</h3>
+                <button type="button" id="toggleCreateBatchBtn" onclick="toggleBatchPanel('createBatchPanel','toggleCreateBatchBtn','Create Student Batch')" style="padding:6px 12px; border:1px solid #d4af37; background:#fff8e1; color:#7a5b00; border-radius:6px; cursor:pointer; font-weight:600;">Open</button>
             </div>
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label>Select Students</label>
-                <input type="text" id="batchStudentSearch" placeholder="Search students for batch..." oninput="filterBatchStudentList()" style="width: 100%; margin-bottom: 10px;">
-                <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
-                    <div style="border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa; min-height: 220px;">
-                        <div style="padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; color: #546e7a; font-weight: 600;">Available Students</div>
-                        <div id="batchStudentList" style="max-height: 260px; overflow-y: auto; padding: 6px;"></div>
-                    </div>
-                    <div style="border: 1px solid #d1e7dd; border-radius: 8px; background: #f6fffa; min-height: 220px;">
-                        <div style="padding: 10px 12px; border-bottom: 1px solid #d1e7dd; display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size: 13px; color: #2e7d32; font-weight: 700;">Selected Students</span>
-                            <span id="batchSelectedCount" style="font-size: 12px; color: #2e7d32; font-weight: 600;">0 selected</span>
+            <div id="createBatchPanel" style="display:none; margin-top: 14px;">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Batch Name</label>
+                    <input type="text" id="batchNameInput" placeholder="e.g., Class 10 Science - Morning" style="width: 100%;">
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Select Students</label>
+                    <input type="text" id="batchStudentSearch" placeholder="Search students for batch..." oninput="filterBatchStudentList()" style="width: 100%; margin-bottom: 10px;">
+                    <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+                        <div style="border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa; min-height: 220px;">
+                            <div style="padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; color: #546e7a; font-weight: 600;">Available Students</div>
+                            <div id="batchStudentList" style="max-height: 260px; overflow-y: auto; padding: 6px;"></div>
                         </div>
-                        <div id="batchSelectedStudentsList" style="max-height: 260px; overflow-y: auto; padding: 6px 8px;">
-                            <div class="empty-state">No students selected yet.</div>
+                        <div style="border: 1px solid #d1e7dd; border-radius: 8px; background: #f6fffa; min-height: 220px;">
+                            <div style="padding: 10px 12px; border-bottom: 1px solid #d1e7dd; display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size: 13px; color: #2e7d32; font-weight: 700;">Selected Students</span>
+                                <span id="batchSelectedCount" style="font-size: 12px; color: #2e7d32; font-weight: 600;">0 selected</span>
+                            </div>
+                            <div id="batchSelectedStudentsList" style="max-height: 260px; overflow-y: auto; padding: 6px 8px;">
+                                <div class="empty-state">No students selected yet.</div>
+                            </div>
                         </div>
                     </div>
                 </div>
+                <button type="button" class="submit-btn" onclick="saveTeacherBatch()">Create Batch</button>
             </div>
-            <button type="button" class="submit-btn" onclick="saveTeacherBatch()">Create Batch</button>
         </div>
 
         <div class="entries-card" style="margin-top: 20px;">
@@ -966,28 +971,33 @@
         </div>
 
         <div class="form-card" style="margin-top: 20px;">
-            <h3>Add Students to Existing Batch</h3>
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label>Select Batch to Edit</label>
-                <select id="editBatchSelect" onchange="onEditBatchSelectionChange()" style="width: 100%;">
-                    <option value="">-- Select Batch --</option>
-                </select>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <h3 style="margin:0; padding:0; border:0;">Add Students to Existing Batch</h3>
+                <button type="button" id="toggleEditBatchBtn" onclick="toggleBatchPanel('editBatchPanel','toggleEditBatchBtn','Add Students to Existing Batch')" style="padding:6px 12px; border:1px solid #90caf9; background:#e3f2fd; color:#1565c0; border-radius:6px; cursor:pointer; font-weight:600;">Open</button>
             </div>
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label>Search & Add Students</label>
-                <input type="text" id="editBatchStudentSearch" placeholder="Search students to add..." oninput="filterEditBatchStudentList()" style="width: 100%; margin-bottom: 10px;">
-                <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
-                    <div style="border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa; min-height: 220px;">
-                        <div style="padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; color: #546e7a; font-weight: 600;">Available Students</div>
-                        <div id="editBatchStudentList" style="max-height: 260px; overflow-y: auto; padding: 6px;"></div>
-                    </div>
-                    <div style="border: 1px solid #d1e7dd; border-radius: 8px; background: #f6fffa; min-height: 220px;">
-                        <div style="padding: 10px 12px; border-bottom: 1px solid #d1e7dd; display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size: 13px; color: #2e7d32; font-weight: 700;">Current Batch Students</span>
-                            <span id="editBatchStudentCount" style="font-size: 12px; color: #2e7d32; font-weight: 600;">0 students</span>
+            <div id="editBatchPanel" style="display:none; margin-top: 14px;">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Select Batch to Edit</label>
+                    <select id="editBatchSelect" onchange="onEditBatchSelectionChange()" style="width: 100%;">
+                        <option value="">-- Select Batch --</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Search & Add Students</label>
+                    <input type="text" id="editBatchStudentSearch" placeholder="Search students to add..." oninput="filterEditBatchStudentList()" style="width: 100%; margin-bottom: 10px;">
+                    <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+                        <div style="border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa; min-height: 220px;">
+                            <div style="padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; color: #546e7a; font-weight: 600;">Available Students</div>
+                            <div id="editBatchStudentList" style="max-height: 260px; overflow-y: auto; padding: 6px;"></div>
                         </div>
-                        <div id="editBatchCurrentStudentsList" style="max-height: 260px; overflow-y: auto; padding: 6px 8px;">
-                            <div class="empty-state">Select a batch to view current students.</div>
+                        <div style="border: 1px solid #d1e7dd; border-radius: 8px; background: #f6fffa; min-height: 220px;">
+                            <div style="padding: 10px 12px; border-bottom: 1px solid #d1e7dd; display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size: 13px; color: #2e7d32; font-weight: 700;">Current Batch Students</span>
+                                <span id="editBatchStudentCount" style="font-size: 12px; color: #2e7d32; font-weight: 600;">0 students</span>
+                            </div>
+                            <div id="editBatchCurrentStudentsList" style="max-height: 260px; overflow-y: auto; padding: 6px 8px;">
+                                <div class="empty-state">Select a batch to view current students.</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1135,6 +1145,17 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
+    window.toggleBatchPanel = function(panelId, buttonId, panelTitle) {
+        const panel = document.getElementById(panelId);
+        const button = document.getElementById(buttonId);
+        if (!panel || !button) return;
+
+        const isHidden = panel.style.display === 'none' || !panel.style.display;
+        panel.style.display = isHidden ? 'block' : 'none';
+        button.textContent = isHidden ? 'Close' : 'Open';
+        button.setAttribute('aria-label', `${isHidden ? 'Close' : 'Open'} ${panelTitle}`);
+    };
+
     // Tab Switching Function
     function switchTab(tabName) {
         // Hide all tabs
@@ -1188,6 +1209,16 @@
 
     // Set today's date as default
     document.addEventListener('DOMContentLoaded', function() {
+        const createPanel = document.getElementById('createBatchPanel');
+        const editPanel = document.getElementById('editBatchPanel');
+        const createBtn = document.getElementById('toggleCreateBatchBtn');
+        const editBtn = document.getElementById('toggleEditBatchBtn');
+
+        if (createPanel) createPanel.style.display = 'none';
+        if (editPanel) editPanel.style.display = 'none';
+        if (createBtn) createBtn.textContent = 'Open';
+        if (editBtn) editBtn.textContent = 'Open';
+
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('date').value = today;
         document.getElementById('date').dispatchEvent(new Event('change'));
