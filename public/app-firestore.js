@@ -282,6 +282,10 @@ let teacherBatchesCache = [];
 let allBatchAttendanceEntries = [];
 let filteredBatchAttendanceEntries = [];
 let selectedBatchStudentIds = new Set();
+let editingBatchId = null;
+let editingBatchStudentIds = new Set();
+let addNewStudentIds = new Set();
+let removeStudentIds = new Set();
 
 const realtimeCollections = new Set();
 const USER_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
@@ -2136,12 +2140,18 @@ window.filterBatchStudentList = function() {
 function renderTeacherBatchList() {
     const listEl = document.getElementById('teacherBatchList');
     const selectEl = document.getElementById('batchAttendanceSelect');
+    const editSelectEl = document.getElementById('editBatchSelect');
     if (!listEl || !selectEl) return;
 
     selectEl.innerHTML = '<option value="">-- Select Batch --</option>';
     teacherBatchesCache.forEach((batchDoc) => {
         selectEl.innerHTML += `<option value="${batchDoc.id}">${batchDoc.batchName} (${(batchDoc.studentNames || []).length})</option>`;
     });
+
+    // Also populate edit batch dropdown
+    if (editSelectEl) {
+        window.populateEditBatchDropdown();
+    }
 
     if (!teacherBatchesCache.length) {
         listEl.innerHTML = '<div class="empty-state">No batches created yet.</div>';
@@ -2250,6 +2260,249 @@ window.deleteTeacherBatch = async function(batchId) {
     } catch (error) {
         console.error('Error deleting batch:', error);
         alert('Unable to delete batch right now.');
+    }
+};
+
+// Load edit batch dropdown with existing batches
+window.populateEditBatchDropdown = function() {
+    const selectEl = document.getElementById('editBatchSelect');
+    if (!selectEl) return;
+
+    selectEl.innerHTML = '<option value="">-- Select Batch --</option>';
+    teacherBatchesCache.forEach((batchDoc) => {
+        selectEl.innerHTML += `<option value="${batchDoc.id}">${batchDoc.batchName}</option>`;
+    });
+};
+
+// Handle batch selection in edit mode
+window.onEditBatchSelectionChange = function() {
+    const selectedBatchId = document.getElementById('editBatchSelect')?.value || '';
+    if (!selectedBatchId) {
+        editingBatchId = null;
+        editingBatchStudentIds.clear();
+        addNewStudentIds.clear();
+        const currentStudentsEl = document.getElementById('editBatchCurrentStudentsList');
+        if (currentStudentsEl) {
+            currentStudentsEl.innerHTML = '<div class="empty-state">Select a batch to view current students.</div>';
+        }
+        const availableStudentsEl = document.getElementById('editBatchStudentList');
+        if (availableStudentsEl) {
+            availableStudentsEl.innerHTML = '';
+        }
+        return;
+    }
+
+    editingBatchId = selectedBatchId;
+    const batchDoc = teacherBatchesCache.find((item) => item.id === selectedBatchId);
+    if (batchDoc) {
+        editingBatchStudentIds = new Set(batchDoc.studentIds || []);
+        addNewStudentIds.clear();
+        renderEditBatchCurrentStudents(batchDoc);
+        renderEditBatchAvailableStudents();
+    }
+};
+
+// Render current students in the batch being edited
+window.renderEditBatchCurrentStudents = function(batchDoc) {
+    const container = document.getElementById('editBatchCurrentStudentsList');
+    if (!container) return;
+
+    const countEl = document.getElementById('editBatchStudentCount');
+    if (countEl) {
+        countEl.textContent = `${(batchDoc.studentIds || []).length} students`;
+    }
+
+    if (!(batchDoc.studentIds || []).length) {
+        container.innerHTML = '<div class="empty-state">No students in this batch.</div>';
+        return;
+    }
+
+    const rows = (batchDoc.studentIds || []).map((studentId, index) => {
+        const studentName = batchDoc.studentNames?.[index] || teacherStudentsDirectory.find((s) => s.id === studentId)?.name || 'Unknown';
+        const isMarkedForRemoval = removeStudentIds.has(studentId);
+        const btnText = isMarkedForRemoval ? 'Marked' : 'Remove';
+        const btnStyle = isMarkedForRemoval ? 'background:#ffe6e6; color:#c62828; border:1px solid #f5c6cb;' : 'background:#ef5350; color:white; border:1px solid #ef5350;';
+
+        return `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 8px; border-bottom:1px solid #eceff1;">
+                <span style="font-size:14px; color:#2c2c2c;">${studentName}</span>
+                <button type="button" onclick="toggleRemoveCurrentStudent('${studentId}')" style="padding:5px 10px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; ${btnStyle}">${btnText}</button>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = rows;
+};
+
+// Render available students for editing (excluding those already in batch)
+window.renderEditBatchAvailableStudents = function() {
+    const listEl = document.getElementById('editBatchStudentList');
+    if (!listEl) return;
+
+    const queryText = (document.getElementById('editBatchStudentSearch')?.value || '').trim().toLowerCase();
+
+    let candidates = teacherStudentsDirectory.filter((student) => !editingBatchStudentIds.has(student.id));
+    if (queryText) {
+        candidates = candidates.filter((student) => (student.name || '').toLowerCase().includes(queryText));
+    }
+
+    if (!candidates.length) {
+        listEl.innerHTML = '<div class="empty-state">All students already in batch or no match.</div>';
+        return;
+    }
+
+    listEl.innerHTML = candidates.map((student) => {
+        const isSelected = addNewStudentIds.has(student.id);
+        const actionText = isSelected ? 'Added' : 'Add';
+        const actionStyle = isSelected
+            ? 'background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9;'
+            : 'background:#1e88e5; color:white; border:1px solid #1e88e5;';
+        const modeDisplay = student.mode ? `(${student.mode.charAt(0).toUpperCase() + student.mode.slice(1)})` : '';
+
+        return `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 8px; border-bottom:1px solid #eceff1;">
+                <span style="font-size:14px; color:#2c2c2c;">${student.name} <span style="font-size:12px; color:#999;">${modeDisplay}</span></span>
+                <button type="button" onclick="toggleEditBatchStudentSelection('${student.id}')" style="padding:5px 10px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; ${actionStyle}">${actionText}</button>
+            </div>
+        `;
+    }).join('');
+};
+
+// Toggle student selection when adding to existing batch
+window.toggleEditBatchStudentSelection = function(studentId) {
+    if (addNewStudentIds.has(studentId)) {
+        addNewStudentIds.delete(studentId);
+    } else {
+        addNewStudentIds.add(studentId);
+    }
+    window.renderEditBatchAvailableStudents();
+};
+
+// Toggle removal selection for current batch students
+window.toggleRemoveCurrentStudent = function(studentId) {
+    if (removeStudentIds.has(studentId)) {
+        removeStudentIds.delete(studentId);
+    } else {
+        removeStudentIds.add(studentId);
+    }
+    const batchDoc = teacherBatchesCache.find((b) => b.id === editingBatchId) || { studentIds: [], studentNames: [] };
+    window.renderEditBatchCurrentStudents(batchDoc);
+};
+
+// Filter available students in edit mode
+window.filterEditBatchStudentList = function() {
+    window.renderEditBatchAvailableStudents();
+};
+
+// Add selected students to existing batch
+window.addStudentsToExistingBatch = async function() {
+    const role = localStorage.getItem('role');
+    const teacherId = localStorage.getItem('teacherId');
+    if (role !== 'teacher' || !teacherId) {
+        alert('Teacher session missing. Please login again.');
+        return;
+    }
+
+    if (!editingBatchId) {
+        alert('Please select a batch first.');
+        return;
+    }
+
+    if (addNewStudentIds.size === 0) {
+        alert('Please select at least one student to add.');
+        return;
+    }
+
+    const batchDoc = teacherBatchesCache.find((item) => item.id === editingBatchId);
+    if (!batchDoc) {
+        alert('Selected batch not found. Please refresh.');
+        return;
+    }
+
+    try {
+        const newStudentIds = Array.from(addNewStudentIds);
+        const newStudents = teacherStudentsDirectory.filter((s) => newStudentIds.includes(s.id));
+        
+        // Merge with existing students
+        const updatedStudentIds = Array.from(new Set([...(batchDoc.studentIds || []), ...newStudentIds]));
+        const updatedStudentNames = updatedStudentIds.map((id) => 
+            teacherStudentsDirectory.find((s) => s.id === id)?.name || 'Unknown'
+        );
+
+        await updateDoc(doc(db, 'teacher_batches', editingBatchId), {
+            studentIds: updatedStudentIds,
+            studentNames: updatedStudentNames,
+            updatedAt: serverTimestamp()
+        });
+
+        alert(`Added ${newStudentIds.length} student(s) to batch!`);
+        
+        // Reload batches
+        await window.loadTeacherBatches();
+        
+        // Reset edit form
+        editingBatchId = null;
+        editingBatchStudentIds.clear();
+        addNewStudentIds.clear();
+        document.getElementById('editBatchSelect').value = '';
+        document.getElementById('editBatchStudentSearch').value = '';
+        window.onEditBatchSelectionChange();
+    } catch (error) {
+        console.error('Error adding students to batch:', error);
+        alert('Unable to add students to batch right now.');
+    }
+};
+
+// Remove selected students from existing batch
+window.removeStudentsFromExistingBatch = async function() {
+    const role = localStorage.getItem('role');
+    const teacherId = localStorage.getItem('teacherId');
+    if (role !== 'teacher' || !teacherId) {
+        alert('Teacher session missing. Please login again.');
+        return;
+    }
+
+    if (!editingBatchId) {
+        alert('Please select a batch first.');
+        return;
+    }
+
+    if (removeStudentIds.size === 0) {
+        alert('Please mark at least one student to remove.');
+        return;
+    }
+
+    const batchDoc = teacherBatchesCache.find((item) => item.id === editingBatchId);
+    if (!batchDoc) {
+        alert('Selected batch not found. Please refresh.');
+        return;
+    }
+
+    try {
+        const removeIds = Array.from(removeStudentIds);
+        const updatedStudentIds = (batchDoc.studentIds || []).filter(id => !removeIds.includes(id));
+        const updatedStudentNames = updatedStudentIds.map((id) => teacherStudentsDirectory.find((s) => s.id === id)?.name || 'Unknown');
+
+        await updateDoc(doc(db, 'teacher_batches', editingBatchId), {
+            studentIds: updatedStudentIds,
+            studentNames: updatedStudentNames,
+            updatedAt: serverTimestamp()
+        });
+
+        alert(`Removed ${removeIds.length} student(s) from batch.`);
+        await window.loadTeacherBatches();
+
+        // Reset edit state
+        editingBatchId = null;
+        editingBatchStudentIds.clear();
+        addNewStudentIds.clear();
+        removeStudentIds.clear();
+        document.getElementById('editBatchSelect').value = '';
+        document.getElementById('editBatchStudentSearch').value = '';
+        window.onEditBatchSelectionChange();
+    } catch (error) {
+        console.error('Error removing students from batch:', error);
+        alert('Unable to remove students from batch right now.');
     }
 };
 
