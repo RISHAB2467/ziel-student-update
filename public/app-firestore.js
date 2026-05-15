@@ -2180,6 +2180,7 @@ function renderTeacherBatchList() {
 
 window.openBatchEditorFromCard = function(batchId, actionType = 'add') {
     const editCard = document.getElementById('editBatchFormCard');
+    const editArrow = document.getElementById('toggleEditBatchArrow');
     if (editCard) {
         editCard.style.display = 'block';
     }
@@ -2187,6 +2188,9 @@ window.openBatchEditorFromCard = function(batchId, actionType = 'add') {
     const editPanel = document.getElementById('editBatchPanel');
     if (editPanel && (editPanel.style.display === 'none' || !editPanel.style.display)) {
         editPanel.style.display = 'block';
+    }
+    if (editArrow) {
+        editArrow.textContent = '▲';
     }
 
     const editSelectEl = document.getElementById('editBatchSelect');

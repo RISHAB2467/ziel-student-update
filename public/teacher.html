@@ -930,10 +930,10 @@
 
     <!-- TAB 3: Batches -->
     <div id="batchesTab" class="tab-content">
-        <div class="form-card" id="createBatchFormCard" onclick="expandCreateBatchCard(event)" style="cursor:pointer;">
+        <div class="form-card" id="createBatchFormCard">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
                 <h3 style="margin:0; padding:0; border:0;">Create Student Batch</h3>
-                <span id="createBatchHint" style="font-size:12px; color:#7a5b00; background:#fff8e1; border:1px solid #d4af37; border-radius:6px; padding:5px 10px; font-weight:600;">Click to expand</span>
+                <button type="button" id="toggleCreateBatchArrow" onclick="toggleBatchPanelArrow('createBatchPanel','toggleCreateBatchArrow')" style="width:32px; height:32px; border:1px solid #d4af37; background:#fff8e1; color:#7a5b00; border-radius:6px; cursor:pointer; font-size:16px; font-weight:700; line-height:1;">▼</button>
             </div>
             <div id="createBatchPanel" style="display:none; margin-top: 14px;">
                 <div class="form-group" style="margin-bottom: 12px;">
@@ -973,6 +973,7 @@
         <div class="form-card" id="editBatchFormCard" style="margin-top: 20px; display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
                 <h3 style="margin:0; padding:0; border:0;">Add/Remove Students in Existing Batch</h3>
+                <button type="button" id="toggleEditBatchArrow" onclick="toggleBatchPanelArrow('editBatchPanel','toggleEditBatchArrow')" style="width:32px; height:32px; border:1px solid #90caf9; background:#e3f2fd; color:#1565c0; border-radius:6px; cursor:pointer; font-size:16px; font-weight:700; line-height:1;">▲</button>
             </div>
             <div id="editBatchPanel" style="display:block; margin-top: 14px;">
                 <div class="form-group" style="margin-bottom: 12px;">
@@ -1144,20 +1145,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-    window.expandCreateBatchCard = function(event) {
-        const panel = document.getElementById('createBatchPanel');
-        const hint = document.getElementById('createBatchHint');
-        const card = document.getElementById('createBatchFormCard');
-        if (!panel) return;
+    window.toggleBatchPanelArrow = function(panelId, arrowButtonId) {
+        const panel = document.getElementById(panelId);
+        const arrowBtn = document.getElementById(arrowButtonId);
+        if (!panel || !arrowBtn) return;
 
-        const interactiveTarget = event.target.closest('input, button, select, textarea, label, a');
-        if (interactiveTarget && panel.style.display === 'block') {
-            return;
-        }
-
-        panel.style.display = 'block';
-        if (hint) hint.style.display = 'none';
-        if (card) card.style.cursor = 'default';
+        const isOpen = panel.style.display === 'block';
+        panel.style.display = isOpen ? 'none' : 'block';
+        arrowBtn.textContent = isOpen ? '▼' : '▲';
     };
 
     // Tab Switching Function
@@ -1216,14 +1211,14 @@
         const createPanel = document.getElementById('createBatchPanel');
         const editPanel = document.getElementById('editBatchPanel');
         const editCard = document.getElementById('editBatchFormCard');
-        const createHint = document.getElementById('createBatchHint');
-        const createCard = document.getElementById('createBatchFormCard');
+        const createArrow = document.getElementById('toggleCreateBatchArrow');
+        const editArrow = document.getElementById('toggleEditBatchArrow');
 
         if (createPanel) createPanel.style.display = 'none';
-        if (createHint) createHint.style.display = 'inline-block';
-        if (createCard) createCard.style.cursor = 'pointer';
+        if (createArrow) createArrow.textContent = '▼';
         if (editCard) editCard.style.display = 'none';
         if (editPanel) editPanel.style.display = 'block';
+        if (editArrow) editArrow.textContent = '▲';
 
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('date').value = today;
