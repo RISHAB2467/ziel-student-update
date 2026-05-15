@@ -2167,12 +2167,41 @@ function renderTeacherBatchList() {
                         <div style="font-weight:600; color:#2c2c2c; margin-bottom:6px;">${batchDoc.batchName}</div>
                         <div style="font-size:13px; color:#546e7a; line-height:1.5;">${students || 'No students mapped'}</div>
                     </div>
-                    <button type="button" onclick="deleteTeacherBatch('${batchDoc.id}')" style="padding:6px 10px; border:1px solid #ef9a9a; background:#ffebee; color:#c62828; border-radius:6px; cursor:pointer;">Delete</button>
+                    <div style="display:flex; flex-direction:column; gap:6px; min-width:138px;">
+                        <button type="button" onclick="openBatchEditorFromCard('${batchDoc.id}', 'add')" style="padding:6px 10px; border:1px solid #90caf9; background:#e3f2fd; color:#1565c0; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">Add Students</button>
+                        <button type="button" onclick="openBatchEditorFromCard('${batchDoc.id}', 'remove')" style="padding:6px 10px; border:1px solid #ffccbc; background:#fff3e0; color:#e64a19; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">Remove Students</button>
+                        <button type="button" onclick="deleteTeacherBatch('${batchDoc.id}')" style="padding:6px 10px; border:1px solid #ef9a9a; background:#ffebee; color:#c62828; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">Delete</button>
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
 }
+
+window.openBatchEditorFromCard = function(batchId, actionType = 'add') {
+    const editSelectEl = document.getElementById('editBatchSelect');
+    if (!editSelectEl) return;
+
+    editSelectEl.value = batchId;
+    window.onEditBatchSelectionChange();
+
+    const editSection = editSelectEl.closest('.form-card');
+    if (editSection) {
+        editSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    const searchInput = document.getElementById('editBatchStudentSearch');
+    if (actionType === 'add' && searchInput) {
+        setTimeout(() => searchInput.focus(), 250);
+    }
+
+    if (actionType === 'remove') {
+        const currentList = document.getElementById('editBatchCurrentStudentsList');
+        if (currentList) {
+            setTimeout(() => currentList.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250);
+        }
+    }
+};
 
 window.loadTeacherBatches = async function() {
     const role = localStorage.getItem('role');
