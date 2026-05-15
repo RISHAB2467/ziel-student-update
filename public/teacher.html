@@ -931,9 +931,9 @@
     <!-- TAB 3: Batches -->
     <div id="batchesTab" class="tab-content">
         <div class="form-card" id="createBatchFormCard">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; cursor:pointer;" onclick="toggleBatchPanelArrow('createBatchPanel','toggleCreateBatchArrow')">
                 <h3 style="margin:0; padding:0; border:0;">Create Student Batch</h3>
-                <button type="button" id="toggleCreateBatchArrow" onclick="toggleBatchPanelArrow('createBatchPanel','toggleCreateBatchArrow')" style="width:32px; height:32px; border:1px solid #d4af37; background:#fff8e1; color:#7a5b00; border-radius:6px; cursor:pointer; font-size:16px; font-weight:700; line-height:1;">▼</button>
+                <button type="button" id="toggleCreateBatchArrow" onclick="event.stopPropagation(); toggleBatchPanelArrow('createBatchPanel','toggleCreateBatchArrow')" style="width:32px; height:32px; border:1px solid #d4af37; background:#fff8e1; color:#7a5b00; border-radius:6px; cursor:pointer; font-size:16px; font-weight:700; line-height:1;">▼</button>
             </div>
             <div id="createBatchPanel" style="display:none; margin-top: 14px;">
                 <div class="form-group" style="margin-bottom: 12px;">
@@ -971,9 +971,9 @@
         </div>
 
         <div class="form-card" id="editBatchFormCard" style="margin-top: 20px; display:none;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; cursor:pointer;" onclick="toggleBatchPanelArrow('editBatchPanel','toggleEditBatchArrow')">
                 <h3 style="margin:0; padding:0; border:0;">Add/Remove Students in Existing Batch</h3>
-                <button type="button" id="toggleEditBatchArrow" onclick="toggleBatchPanelArrow('editBatchPanel','toggleEditBatchArrow')" style="width:32px; height:32px; border:1px solid #90caf9; background:#e3f2fd; color:#1565c0; border-radius:6px; cursor:pointer; font-size:16px; font-weight:700; line-height:1;">▲</button>
+                <button type="button" id="toggleEditBatchArrow" onclick="event.stopPropagation(); toggleBatchPanelArrow('editBatchPanel','toggleEditBatchArrow')" style="width:32px; height:32px; border:1px solid #90caf9; background:#e3f2fd; color:#1565c0; border-radius:6px; cursor:pointer; font-size:16px; font-weight:700; line-height:1;">▲</button>
             </div>
             <div id="editBatchPanel" style="display:block; margin-top: 14px;">
                 <div class="form-group" style="margin-bottom: 12px;">
